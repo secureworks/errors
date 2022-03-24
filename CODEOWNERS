@@ -1,0 +1,6 @@
+# Global owners.
+* @hews @iaburton @joshrendek
+
+# Docs owners.
+.github/*  @hews
+*.md       @hews
