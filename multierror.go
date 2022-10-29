@@ -87,7 +87,7 @@ func NewMultiError(errors ...error) (merr *MultiError) {
 	return
 }
 
-// TODO(PH): are there ways to optimize allocations below (and above).
+// TODO(PH): are there ways to optimize allocations below (and above)?
 
 // flatten gets a list of errors from a multiError that is certain not
 // to contain any other multiErrors or wrapped multiErrors.
@@ -171,16 +171,16 @@ func (merr *MultiError) ErrorN(n int) error {
 }
 
 // ErrorOrNil is used to get a clean error interface for reflection. If
-// the MultiError is empty it returns nil, otherwise it returns the
-// MultiError retyped for the error interface.
+// the MultiError is empty it returns nil, and if there is a single
+// error then it is unnested. Otherwise, it returns the MultiError
+// retyped for the error interface.
 //
 // Retrieving the MultiError is simple, since NewMultiError flattens
 // MultiErrors passed to it:
 //
-//     err := errors.NewMultiError(e1, e2, e3).ErrorOrNil()
-//     newMErr := errors.NewMultiError(err)
-//     newMErr.Errors() // => []error{e1, e2, e3}
-//
+//	err := errors.NewMultiError(e1, e2, e3).ErrorOrNil()
+//	newMErr := errors.NewMultiError(err)
+//	newMErr.Errors() // => []error{e1, e2, e3}
 func (merr *MultiError) ErrorOrNil() error {
 	if merr == nil {
 		return nil
@@ -188,12 +188,16 @@ func (merr *MultiError) ErrorOrNil() error {
 	if len(merr.Errors()) == 0 {
 		return nil
 	}
+	if len(merr.Errors()) == 1 {
+		return merr.errors[0]
+	}
 	return merr
 }
 
 // Err is an alias for ErrorOrNil. It is used to get a clean error
 // interface for reflection. If the MultiError is empty it returns nil,
-// otherwise it returns the MultiError retyped for the error interface.
+// and if there is a single error then it is unnested. Otherwise, it
+// returns the MultiError retyped for the error interface.
 func (merr *MultiError) Err() error {
 	return merr.ErrorOrNil()
 }

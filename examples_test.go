@@ -548,11 +548,13 @@ func ExampleMultiError_ErrorOrNil() {
 	pprint("\n", errors.NewMultiError().ErrorOrNil())
 	pprint("\n", errors.NewMultiError(nil).ErrorOrNil())
 	pprint("\n", errors.NewMultiError(errors.New("err")).ErrorOrNil())
+	pprint("\n", errors.NewMultiError(errors.New("err"), errors.New("err")).ErrorOrNil())
 
 	// Output:
 	// <nil>
 	// <nil>
-	// [err]
+	// err
+	// [err; err]
 }
 
 func ExampleMultiError_as() {
@@ -781,7 +783,7 @@ func ExampleAppendInto() {
 
 	// Output:
 	// %!s(<nil>)
-	// [err1]
+	// err1
 	// [err1; err2]
 	// [err1; err2; err3]
 }

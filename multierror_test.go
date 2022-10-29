@@ -619,13 +619,10 @@ func TestAppendInto(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				var e = tt.arg1
 				testutils.AssertEqual(t, !tt.argWasNil, errors.AppendInto(&e, tt.arg2))
-				mm, ok := e.(*errors.MultiError)
 				if tt.returnsNil {
-					testutils.AssertFalse(t, ok)
 					testutils.AssertNil(t, e)
 				} else {
-					testutils.AssertTrue(t, ok)
-					testutils.AssertEqual(t, tt.size, len(mm.Errors()))
+					testutils.AssertNotNil(t, e)
 				}
 			})
 		}
