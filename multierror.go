@@ -33,9 +33,9 @@ import (
 // However, any package function that expects a multiple error
 // implementation relies on the unexported interface:
 //
-//     type multiError interface {
-//         Errors() []error
-//     }
+//	type multiError interface {
+//	    Errors() []error
+//	}
 //
 // This is for simplicity and interoperability: you can still extract
 // a multiple error from any error using NewMultiError.
@@ -72,7 +72,7 @@ var _ interface { // Assert interface implementation.
 // ***do not wrap MultiErrors!***
 func NewMultiError(errors ...error) (merr *MultiError) {
 	for _, err := range errors {
-		if err == nil {
+		if isNil(err) {
 			continue
 		}
 		if merr == nil {
@@ -98,7 +98,7 @@ func flatten(m multiError) (errs []error) {
 	}
 
 	for _, err := range m.Errors() {
-		if err == nil {
+		if isNil(err) {
 			continue
 		}
 		if mm := unwrapMultiErr(err); mm != nil {
@@ -136,14 +136,14 @@ func (merr *MultiError) Error() string {
 // This interface may be used to treat MultiErrors as an interface for
 // use in code that may not want to expect a MultiError type directly:
 //
-//     if merr, ok := err.(interface{ Errors() [] error }); ok {
-//         // ...
-//     }
+//	if merr, ok := err.(interface{ Errors() [] error }); ok {
+//	    // ...
+//	}
 //
 // Do not modify the returned errors and expect the MultiError to remain
 // stable.
 func (merr *MultiError) Errors() []error {
-	if merr == nil || len(merr.errors) == 0 {
+	if isNil(merr) || len(merr.errors) == 0 {
 		return nil
 	}
 	return merr.errors
@@ -151,7 +151,7 @@ func (merr *MultiError) Errors() []error {
 
 // Len returns the number of errors currently in the MultiError.
 func (merr *MultiError) Len() int {
-	if merr == nil {
+	if isNil(merr) {
 		return 0
 	}
 	return len(merr.errors)
@@ -160,7 +160,7 @@ func (merr *MultiError) Len() int {
 // ErrorN returns the error at the given index in the MultiError. If
 // this index does not exist then we return nil.
 func (merr *MultiError) ErrorN(n int) error {
-	if merr == nil {
+	if isNil(merr) {
 		return nil
 	}
 	l := len(merr.errors)
@@ -182,9 +182,6 @@ func (merr *MultiError) ErrorN(n int) error {
 //	newMErr := errors.NewMultiError(err)
 //	newMErr.Errors() // => []error{e1, e2, e3}
 func (merr *MultiError) ErrorOrNil() error {
-	if merr == nil {
-		return nil
-	}
 	if len(merr.Errors()) == 0 {
 		return nil
 	}
@@ -213,9 +210,6 @@ func (merr *MultiError) Unwrap() error { return nil }
 // This function allows As to traverse the values stored on the
 // MultiError, even though the type has a null Unwrap implementation.
 func (merr *MultiError) As(target interface{}) bool {
-	if merr == nil {
-		return false
-	}
 	for _, err := range merr.Errors() {
 		if As(err, target) {
 			return true
@@ -229,9 +223,6 @@ func (merr *MultiError) As(target interface{}) bool {
 // This function allows Is to traverse the values stored on the
 // MultiError, even though the type has a null Unwrap implementation.
 func (merr *MultiError) Is(target error) bool {
-	if merr == nil {
-		return false
-	}
 	for _, err := range merr.Errors() {
 		if Is(err, target) {
 			return true
@@ -245,12 +236,7 @@ func (merr *MultiError) Format(s fmt.State, verb rune) {
 	case 'v':
 		switch {
 		case s.Flag('+'):
-			if merr == nil {
-				io.WriteString(s, "empty errors: []")
-				return
-			}
-
-			size := len(merr.errors)
+			size := len(merr.Errors())
 			if size < 1 {
 				io.WriteString(s, "empty errors: []")
 				return
@@ -284,14 +270,7 @@ func (merr *MultiError) Format(s fmt.State, verb rune) {
 func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 	first := true
 	io.WriteString(w, delimiters[0])
-	if merr == nil {
-		io.WriteString(w, delimiters[1])
-		return
-	}
 	for _, err := range merr.Errors() {
-		if err == nil {
-			continue
-		}
 		if !first {
 			io.WriteString(w, "; ")
 		}
@@ -308,18 +287,18 @@ func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 // returned as an error type, or when it is unknown if a given error is
 // a MultiError or not:
 //
-//     var err error
-//     // ...
-//     if errors.AppendInto(&err, w.Close()) {
-//         errs := errors.ErrorsFrom(err)
-//     }
+//	var err error
+//	// ...
+//	if errors.AppendInto(&err, w.Close()) {
+//	    errs := errors.ErrorsFrom(err)
+//	}
 //
 // If the error is not composed of other errors, the returned slice
 // contains just the error that was passed in.
 //
 // Callers of this function are free to modify the returned slice.
 func ErrorsFrom(err error) []error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	if merr, ok := err.(*MultiError); ok {
@@ -353,27 +332,28 @@ func ErrorsFrom(err error) []error {
 // The following pattern may also be used to record failure of deferred
 // operations without losing information about the original error.
 //
-// 	func doSomething(..) (err error) {
-// 		f := acquireResource()
-// 		defer func() {
-// 			err = errors.Append(err, f.Close())
-// 		}()
+//	func doSomething(..) (err error) {
+//		f := acquireResource()
+//		defer func() {
+//			err = errors.Append(err, f.Close())
+//		}()
 //
 // QUESTION(PH): should we panic instead of add error?
-//
 func Append(receivingErr error, appendingErr error) *MultiError {
-	if receivingErr == nil && appendingErr == nil {
+	receivingErrIsNil := isNil(receivingErr)
+	appendingErrIsNil := isNil(appendingErr)
+	if receivingErrIsNil && appendingErrIsNil {
 		return nil
 	}
 
 	switch {
-	case receivingErr == nil:
+	case receivingErrIsNil:
 		if mAppendingErr := unwrapMultiErr(appendingErr); mAppendingErr != nil {
 			appendingErr = New("errors.Append used incorrectly: " +
 				"second parameter may not be a multiError")
 		}
 		return &MultiError{errors: []error{appendingErr}}
-	case appendingErr == nil:
+	case appendingErrIsNil:
 		if mReceivingErr := unwrapMultiErr(receivingErr); mReceivingErr != nil {
 			return &MultiError{errors: flatten(mReceivingErr)}
 		}
@@ -393,52 +373,51 @@ func Append(receivingErr error, appendingErr error) *MultiError {
 // AppendInto appends an error into the destination of an error pointer
 // and returns whether the error being appended was non-nil.
 //
-//     var err error
-//     errors.AppendInto(&err, r.Close())
-//     errors.AppendInto(&err, w.Close())
+//	var err error
+//	errors.AppendInto(&err, r.Close())
+//	errors.AppendInto(&err, w.Close())
 //
 // The above is equivalent to,
 //
-//     err := errors.Append(r.Close(), w.Close()).ErrorOrNil()
+//	err := errors.Append(r.Close(), w.Close()).ErrorOrNil()
 //
 // As AppendInto reports whether the provided error was non-nil, it may
 // be used to build an errors error in a loop more ergonomically. For
 // example:
 //
-//     var err error
-//     for line := range lines {
-//         var item Item
-//         if errors.AppendInto(&err, parse(line, &item)) {
-//             continue
-//         }
-//         items = append(items, item)
-//     }
-//     if err != nil {
-//         log.Fatal(err)
-//     }
+//	var err error
+//	for line := range lines {
+//	    var item Item
+//	    if errors.AppendInto(&err, parse(line, &item)) {
+//	        continue
+//	    }
+//	    items = append(items, item)
+//	}
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 //
 // Compare this with a version that relies solely on Append:
 //
-//     var merr *errors.MultiError
-//     for line := range lines {
-//         var item Item
-//         if parseErr := parse(line, &item); parseErr != nil {
-//             merr = errors.Append(merr, parseErr)
-//             continue
-//         }
-//         items = append(items, item)
-//     }
-//     err := merr.ErrorOrNil()
-//     if err != nil {
-//         log.Fatal(err)
-//     }
+//	var merr *errors.MultiError
+//	for line := range lines {
+//	    var item Item
+//	    if parseErr := parse(line, &item); parseErr != nil {
+//	        merr = errors.Append(merr, parseErr)
+//	        continue
+//	    }
+//	    items = append(items, item)
+//	}
+//	err := merr.ErrorOrNil()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 //
 // As in Append, if you pass a multiError as the second error AppendInto
 // will ignore it and add a new, specific error to the returned
 // MultiError.
 //
 // QUESTION(PH): should we panic instead of add error?
-//
 func AppendInto(receivingErr *error, appendingErr error) bool {
 	switch {
 	case receivingErr == nil:
@@ -448,7 +427,7 @@ func AppendInto(receivingErr *error, appendingErr error) bool {
 		// to must be non-nil.
 		panic(NewWithStackTrace(
 			"errors.AppendInto used incorrectly: receiving pointer must not be nil"))
-	case appendingErr == nil:
+	case isNil(appendingErr):
 		*receivingErr = NewMultiError(*receivingErr).ErrorOrNil()
 		return false
 	default:
@@ -472,49 +451,48 @@ type ErrorResulter func() error
 // defer invocation of fallible operations until a function returns, and
 // capture the resulting errors.
 //
-//     func doSomething(...) (err error) {
-//         // ...
-//         f, err := openFile(..)
-//         if err != nil {
-//             return err
-//         }
+//	func doSomething(...) (err error) {
+//	    // ...
+//	    f, err := openFile(..)
+//	    if err != nil {
+//	        return err
+//	    }
 //
-//         // errors will call f.Close() when this function returns, and if the
-//         // operation fails it will append its error into the returned error.
-//         defer errors.AppendInvoke(&err, f.Close)
+//	    // errors will call f.Close() when this function returns, and if the
+//	    // operation fails it will append its error into the returned error.
+//	    defer errors.AppendInvoke(&err, f.Close)
 //
-//         scanner := bufio.NewScanner(f)
-//         // Similarly, this scheduled scanner.Err to be called and inspected
-//         // when the function returns and append its error into the returned
-//         // error.
-//         defer errors.AppendResult(&err, scanner.Err)
+//	    scanner := bufio.NewScanner(f)
+//	    // Similarly, this scheduled scanner.Err to be called and inspected
+//	    // when the function returns and append its error into the returned
+//	    // error.
+//	    defer errors.AppendResult(&err, scanner.Err)
 //
-//         // ...
-//     }
+//	    // ...
+//	}
 //
 // Without defer, AppendResult behaves exactly like AppendInto.
 //
-//     err := // ...
-//     errors.AppendResult(&err, errorableFn)
+//	err := // ...
+//	errors.AppendResult(&err, errorableFn)
 //
-//     // ...is roughly equivalent to...
+//	// ...is roughly equivalent to...
 //
-//     err := // ...
-//     errors.AppendInto(&err, errorableFn())
+//	err := // ...
+//	errors.AppendInto(&err, errorableFn())
 //
 // The advantage of the indirection introduced by ErrorResulter is to
 // make it easy to defer the invocation of a function. Without this
 // indirection, the invoked function will be evaluated at the time of
 // the defer block rather than when the function returns.
 //
-//     // BAD: This is likely not what the caller intended. This will evaluate
-//     // foo() right away and append its result into the error when the
-//     // function returns.
-//     defer errors.AppendInto(&err, errorableFn())
+//	// BAD: This is likely not what the caller intended. This will evaluate
+//	// foo() right away and append its result into the error when the
+//	// function returns.
+//	defer errors.AppendInto(&err, errorableFn())
 //
-//     // GOOD: This will defer invocation of foo until the function returns.
-//     defer errors.AppendResult(&err, errorableFn)
-//
+//	// GOOD: This will defer invocation of foo until the function returns.
+//	defer errors.AppendResult(&err, errorableFn)
 func AppendResult(receivingErr *error, resulterFn ErrorResulter) {
 	AppendInto(receivingErr, resulterFn())
 }

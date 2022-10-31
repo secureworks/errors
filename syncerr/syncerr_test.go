@@ -5,14 +5,29 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/secureworks/errors"
 	"github.com/secureworks/errors/internal/testutils"
 	"github.com/secureworks/errors/syncerr"
 )
 
+type errorType struct{}
+
+func (m errorType) Error() string { return "i'm an error" }
+
+type errorList []errorType
+
+func (m errorList) Error() string {
+	return fmt.Sprintf("i'm an error list x %d", len(m))
+}
+
 func TestCoordinatedGroup(t *testing.T) {
 	err := errors.New("new err")
+
+	// Problematic nils.
+	var nilErrList errorList
+	nilErr := (*errorType)(nil)
 
 	cases := []struct {
 		errs     []error
@@ -20,8 +35,10 @@ func TestCoordinatedGroup(t *testing.T) {
 	}{
 		{expected: nil},
 		{errs: []error{nil}, expected: nil},
+		{errs: []error{nilErrList, nilErr}, expected: nil},
 		{errs: []error{err}, expected: err},
 		{errs: []error{err, nil}, expected: err},
+		{errs: []error{nilErrList, err, nilErr}, expected: err},
 	}
 
 	for i, tc := range cases {
@@ -60,31 +77,41 @@ func TestCoordinatedGroup_ZeroValue(t *testing.T) {
 	err1 := errors.New("new err: 1")
 	err2 := errors.New("new err: 2")
 
+	// Problematic nils.
+	var nilErrList errorList
+	nilErr := (*errorType)(nil)
+
 	cases := []struct {
-		errs []error
+		errs   []error
+		hasErr bool
 	}{
 		{errs: []error{}},
 		{errs: []error{nil}},
-		{errs: []error{err1}},
-		{errs: []error{err1, nil}},
-		{errs: []error{err1, nil, err2}},
+		{errs: []error{nilErr, nilErr}},
+		{errs: []error{err1}, hasErr: true},
+		{errs: []error{err1, nil}, hasErr: true},
+		{errs: []error{err1, nil, err2}, hasErr: true},
+		{errs: []error{nil, err1, err2}, hasErr: true},
+		{errs: []error{err1, nilErrList, err2}, hasErr: true},
+		{errs: []error{nilErr, nilErrList, err1}, hasErr: true},
 	}
 
 	for i, tc := range cases {
 		group := new(syncerr.CoordinatedGroup)
 
-		var firstErr error
 		for j, err := range tc.errs {
 			err := err
+			time.Sleep(time.Duration(int64(time.Millisecond) * int64(j)))
 			group.Go(func() error { return err })
-
-			if firstErr == nil && err != nil {
-				firstErr = err
-			}
-
-			gErr := group.Wait()
-			testutils.AssertEqual(t, firstErr, gErr, fmt.Sprintf("case %d: task: %d", i, j))
 		}
+
+		gErr := group.Wait()
+		if tc.hasErr {
+			testutils.AssertEqual(t, err1, gErr, fmt.Sprintf("case %d:", i))
+		} else {
+			testutils.AssertEqual(t, nil, gErr, fmt.Sprintf("case %d:", i))
+		}
+
 	}
 }
 
@@ -92,14 +119,20 @@ func TestParallelGroup(t *testing.T) {
 	err1 := errors.New("new err: 1")
 	err2 := errors.New("new err: 2")
 
+	// Problematic nils.
+	var nilErrList errorList
+	nilErr := (*errorType)(nil)
+
 	cases := []struct {
 		errs []error
 	}{
 		{errs: []error{}},
 		{errs: []error{nil}},
+		{errs: []error{nilErrList}},
 		{errs: []error{err1}},
 		{errs: []error{err1, nil}},
 		{errs: []error{err1, nil, err2, nil}},
+		{errs: []error{err1, nilErr, err2, nilErr}},
 	}
 
 	for i, tc := range cases {
@@ -109,7 +142,7 @@ func TestParallelGroup(t *testing.T) {
 		for _, err := range tc.errs {
 			err := err
 			group.Go(func() error { return err })
-			if err != nil {
+			if err == err1 || err == err2 {
 				taskErrors = append(taskErrors, err)
 			}
 		}

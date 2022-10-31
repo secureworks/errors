@@ -46,7 +46,7 @@ func NewWithStackTrace(msg string) error {
 
 // WithStackTrace adds a stack trace to the error by wrapping it.
 func WithStackTrace(err error) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	return &withStackTrace{
@@ -149,7 +149,7 @@ func NewWithFrameAt(msg string, skipCallers int) error {
 // second param allows you to tune how many callers to skip (in case
 // this is called in a helper you want to ignore, for example).
 func WithFrameAt(err error, skipCallers int) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	return &withFrames{
@@ -165,7 +165,7 @@ func NewWithFrames(msg string, ff Frames) error {
 
 // WithFrames adds a list of frames to the error by wrapping it.
 func WithFrames(err error, ff Frames) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	fframes := make([]*frame, len(ff))
@@ -260,7 +260,7 @@ func (w *withFrames) Format(s fmt.State, verb rune) {
 // in a single error chain.
 func FramesFrom(err error) (ff Frames) {
 	var traceFound bool
-	for err != nil {
+	for !isNil(err) {
 		var errHasTrace bool
 		traceErr, ok := err.(stackTracer)
 		if ok {
@@ -310,7 +310,7 @@ var _ interface { // Assert interface implementation.
 // error chain is maintained so that As, Is, and FramesFrom all continue
 // to work.
 func WithMessage(err error, msg string) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	return &withMessage{
@@ -346,7 +346,7 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 // does not match err and can't be unwrapped. As and Is will return
 // false for all meaningful values.
 func Mask(err error) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	return New(err.Error())
@@ -362,7 +362,7 @@ func Mask(err error) error {
 //
 // You can think of Opaque as squashing the history of an error.
 func Opaque(err error) error {
-	if err == nil {
+	if isNil(err) {
 		return nil
 	}
 	newErr := Mask(err)
@@ -371,6 +371,8 @@ func Opaque(err error) error {
 	}
 	return newErr
 }
+
+// Error deserialization.
 
 // ErrorFromBytes parses a stack trace or stack dump provided as bytes
 // into an error. The format of the text is expected to match the output
@@ -397,7 +399,7 @@ func ErrorFromBytes(byt []byte) (err error, ok bool) {
 
 	err = New(string(byt[:n]))
 	stack, actualErr := FramesFromBytes(byt[n+1:])
-	if actualErr != nil {
+	if !isNil(actualErr) {
 		return actualErr, false
 	}
 	if len(stack) > 0 {
