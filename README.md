@@ -88,6 +88,6 @@ libraries. See the codebase for any specific attributions.
 
 <!-- LINKS -->
 
-[docs]: https://pkg.go.dev/github.com/secureworks/error
+[docs]: https://pkg.go.dev/github.com/secureworks/errors
 [golang-ci]: https://github.com/golangci/golangci-lint
 [Apache-2.0]: https://choosealicense.com/licenses/apache-2.0/
