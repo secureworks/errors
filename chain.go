@@ -38,9 +38,9 @@ var _ interface { // Assert interface implementation.
 // Chain returns a new error with its own message, annotated with a stack trace, wrapping the causing error. Chain
 // errors' messages do not (usually) contain the "%w" verb, as they are meant to be printed as a whole chain (e.g. in
 // a server request log).
-func Chain(message string, cause error) error {
+func Chain(cause error, message string, args ...interface{}) error {
 	return &chain{
-		message: message,
+		message: fmt.Sprintf(message, args...),
 		cause:   cause,
 		frames:  getStack(3),
 	}

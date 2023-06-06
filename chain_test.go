@@ -10,7 +10,7 @@ import (
 func openCustomerFile(customerID string) (*os.File, error) {
 	f, err := os.Open("/data/customers/" + customerID + ".csv")
 	if err != nil {
-		return nil, errors.Chain("failed to open customer file", err)
+		return nil, errors.Chain(err, "failed to open customer file")
 	}
 	return f, nil
 }
@@ -18,13 +18,13 @@ func openCustomerFile(customerID string) (*os.File, error) {
 func readCustomerInfo(customerID string) (string, error) {
 	f, err := openCustomerFile(customerID)
 	if err != nil {
-		return "", errors.Chain("failed to open customer", err)
+		return "", errors.Chain(err, "failed to open customer")
 	}
 	defer f.Close()
 
 	bytes, err := io.ReadAll(f)
 	if err != nil {
-		return "", errors.Chain("failed to read customer info", err)
+		return "", errors.Chain(err, "failed to read customer info")
 	}
 	return string(bytes), nil
 }

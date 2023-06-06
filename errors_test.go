@@ -96,8 +96,8 @@ func WithCaller(fn Errorer) error {
 	return fn()
 }
 
-func ChainCaller(msg string, fn Errorer) error {
-	return errors.Chain(msg, fn())
+func ChainCaller(fn Errorer, msg string, args ...interface{}) error {
+	return errors.Chain(fn(), msg, args...)
 }
 
 var (
@@ -112,10 +112,10 @@ var (
 	withCallerFuncM = "^github\\.com/secureworks/errors_test.WithCaller$"
 	withFrameFuncM  = "^github\\.com/secureworks/errors_test.WithFrameCaller$"
 	withStackFuncM  = "^github\\.com/secureworks/errors_test.WithStackTraceCaller$"
-	chainFuncM      = "^github\\.com/secureworks/errors_test.ChainCaller$"
+	chainFuncM      = "^\\s*github\\.com/secureworks/errors_test.ChainCaller$"
 	withWrapFuncM   = "^github\\.com/secureworks/errors_test.WrapCaller$"
 	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\.glob\.\.func%s$`, errorsTestPkgM, fnName) }
-	errorTestFileM  = func(line string) string { return fmt.Sprintf("^\t.+%s:%s$", errorsTestFilM, line) }
+	errorTestFileM  = func(line string) string { return fmt.Sprintf("^\\s*\t.+%s:%s$", errorsTestFilM, line) }
 
 	framesChainM = []string{
 		"",             // Newline.
@@ -299,7 +299,7 @@ func TestErrorFrames(t *testing.T) {
 	})
 
 	t.Run("Chain", func(t *testing.T) {
-		err := ChainCaller(wrapperMsg, NewErrorCaller)
+		err := ChainCaller(NewErrorCaller, wrapperMsg)
 		chain, ok := err.(interface{ Frames() errors.Frames })
 
 		// Exists and wraps in a stack trace starting at current frame.
@@ -360,7 +360,7 @@ func TestErrorStackTrace(t *testing.T) {
 	})
 
 	t.Run("Chain", func(t *testing.T) {
-		err := ChainCaller(wrapperMsg, NewErrorCaller)
+		err := ChainCaller(NewErrorCaller, wrapperMsg)
 		chain, ok := err.(interface{ StackTrace() []uintptr })
 
 		// Exists and wraps in a stack trace starting at current frame.
@@ -396,8 +396,8 @@ func TestNilInputs(t *testing.T) {
 		testutils.AssertTrue(t, errors.WithStackTrace((*errorType)(nil)) == nil)
 	})
 	t.Run("Chain", func(t *testing.T) {
-		testutils.AssertTrue(t, errors.Chain(wrapperMsg, nil) != nil)
-		testutils.AssertTrue(t, errors.Unwrap(errors.Chain(wrapperMsg, nil)) == nil)
+		testutils.AssertTrue(t, errors.Chain(nil, wrapperMsg) != nil)
+		testutils.AssertTrue(t, errors.Unwrap(errors.Chain(nil, wrapperMsg)) == nil)
 	})
 	t.Run("WithMessage", func(t *testing.T) {
 		testutils.AssertTrue(t, errors.WithMessage(nil, "new msg") == nil)
@@ -509,8 +509,8 @@ func TestErrorFormat(t *testing.T) {
 	errStackThenFrame := errors.WithStackTrace(errChain)
 
 	root := errors.NewWithStackTrace("err")
-	wrapper1 := errors.Chain("wrapper1", root)
-	wrapper2 := errors.Chain("wrapper2", wrapper1)
+	wrapper1 := errors.Chain(root, "wrapper1")
+	wrapper2 := errors.Chain(wrapper1, "wrapper2")
 
 	t.Run("WithFrame", func(t *testing.T) {
 		cases := []struct {
@@ -628,23 +628,24 @@ func TestErrorFormat(t *testing.T) {
 			error  error
 			expect interface{}
 		}{
-			{"%s", ChainCaller(wrapperMsg, NewErrorCaller), `wrapper`},
-			{"%q", ChainCaller(wrapperMsg, NewErrorCaller), fmt.Sprintf("\"%s\"", wrapperMsg)},
-			{"%v", ChainCaller(wrapperMsg, NewErrorCaller), `wrapper`},
-			{"%#v", ChainCaller(wrapperMsg, NewErrorCaller), fmt.Sprintf(`&errors.chain{"%s" "%s"}`, wrapperMsg, newMsg)},
-			{"%d", ChainCaller(wrapperMsg, NewErrorCaller), ``}, // empty
+			{"%s", ChainCaller(NewErrorCaller, wrapperMsg), `wrapper`},
+			{"%q", ChainCaller(NewErrorCaller, wrapperMsg), fmt.Sprintf("\"%s\"", wrapperMsg)},
+			{"%v", ChainCaller(NewErrorCaller, wrapperMsg), `wrapper`},
+			{"%#v", ChainCaller(NewErrorCaller, wrapperMsg), fmt.Sprintf(`&errors.chain{"%s" "%s"}`, wrapperMsg, newMsg)},
+			{"%d", ChainCaller(NewErrorCaller, wrapperMsg), ``}, // empty
 			{
 				format: "%+v",
-				error:  ChainCaller(wrapperMsg, NewErrorCaller),
+				error:  ChainCaller(NewErrorCaller, wrapperMsg),
 				expect: []string{
 					wrapperMsg,
 					chainFuncM,
 					errorTestFileM(chainCallerL),
-					"^github.com/secureworks/errors_test\\.TestErrorFormat.func4$",
+					"^\\s*github.com/secureworks/errors_test\\.TestErrorFormat.func4$",
 					errorTestFileM(`\d+`),
-					`^testing\.tRunner$`,
+					`^\s*testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
-					newMsg,
+					"",
+					"CAUSED BY: " + newMsg,
 				},
 			},
 			{
@@ -653,20 +654,22 @@ func TestErrorFormat(t *testing.T) {
 				error:  wrapper2,
 				expect: []string{
 					wrapperMsg + "2",
-					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					"^\\s*github.com/secureworks/errors_test.TestErrorFormat$",
 					errorTestFileM(`513`),
-					`^testing\.tRunner$`,
-					`^.+/testing/testing.go:\d+$`,
-					wrapperMsg + "1",
-					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					`^\s*testing\.tRunner$`,
+					`^\s*.+/testing/testing.go:\d+$`,
+					"",
+					"CAUSED BY: " + wrapperMsg + "1",
+					"^\\s*github.com/secureworks/errors_test.TestErrorFormat$",
 					errorTestFileM(`512`),
-					`^testing\.tRunner$`,
-					`^.+/testing/testing.go:\d+$`,
-					"err",
-					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					`^\s*testing\.tRunner$`,
+					`^\s*.+/testing/testing.go:\d+$`,
+					"",
+					"CAUSED BY: err",
+					"^\\s*github.com/secureworks/errors_test.TestErrorFormat$",
 					errorTestFileM(`511`),
-					`^testing\.tRunner$`,
-					`^.+/testing/testing.go:\d+$`,
+					`^\s*testing\.tRunner$`,
+					`^\s*.+/testing/testing.go:\d+$`,
 				},
 			},
 		}
