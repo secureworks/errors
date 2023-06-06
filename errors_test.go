@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	newMsg = "new err"
+	newMsg     = "new err"
+	wrapperMsg = "wrapper"
 
 	// F - 0 - F - O - F - O - Ø
 	FramesChainError = func() error {
@@ -95,17 +96,23 @@ func WithCaller(fn Errorer) error {
 	return fn()
 }
 
+func ChainCaller(msg string, fn Errorer) error {
+	return errors.Chain(msg, fn())
+}
+
 var (
-	withCallerL     = "95"
-	withFrameL      = "90"
-	withStackTraceL = "85"
-	withWrapL       = "80"
+	withCallerL     = "96"
+	withFrameL      = "91"
+	withStackTraceL = "86"
+	withWrapL       = "81"
+	chainCallerL    = "100"
 
 	errorsTestPkgM  = `github\.com/secureworks/errors_test`
 	errorsTestFilM  = `/errors_test\.go`
 	withCallerFuncM = "^github\\.com/secureworks/errors_test.WithCaller$"
 	withFrameFuncM  = "^github\\.com/secureworks/errors_test.WithFrameCaller$"
 	withStackFuncM  = "^github\\.com/secureworks/errors_test.WithStackTraceCaller$"
+	chainFuncM      = "^github\\.com/secureworks/errors_test.ChainCaller$"
 	withWrapFuncM   = "^github\\.com/secureworks/errors_test.WrapCaller$"
 	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\.glob\.\.func%s$`, errorsTestPkgM, fnName) }
 	errorTestFileM  = func(line string) string { return fmt.Sprintf("^\t.+%s:%s$", errorsTestFilM, line) }
@@ -123,19 +130,19 @@ var (
 	stackChainM = []string{
 		"", // Newline.
 		errorTestAnonM("2.1.1.1"),
-		errorTestFileM("42"),
+		errorTestFileM("43"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("2.1.1"),
-		errorTestFileM("40"),
+		errorTestFileM("41"),
 		withStackFuncM,
 		errorTestFileM(withStackTraceL),
 		errorTestAnonM("2.1"),
-		errorTestFileM("38"),
+		errorTestFileM("39"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("2"),
-		errorTestFileM("36"),
+		errorTestFileM("37"),
 		// Append top-level caller(s) in test.
 	}
 
@@ -144,15 +151,15 @@ var (
 		withStackFuncM,
 		errorTestFileM(withStackTraceL),
 		errorTestAnonM("3.1.1"),
-		errorTestFileM("54"),
+		errorTestFileM("55"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("3.1"),
-		errorTestFileM("52"),
+		errorTestFileM("53"),
 		withFrameFuncM,
 		errorTestFileM(withFrameL),
 		errorTestAnonM("3"),
-		errorTestFileM("50"),
+		errorTestFileM("51"),
 		// Append top-level caller(s) in test.
 	}
 )
@@ -290,6 +297,22 @@ func TestErrorFrames(t *testing.T) {
 			},
 		)
 	})
+
+	t.Run("Chain", func(t *testing.T) {
+		err := ChainCaller(wrapperMsg, NewErrorCaller)
+		chain, ok := err.(interface{ Frames() errors.Frames })
+
+		// Exists and wraps in a stack trace starting at current frame.
+		testutils.AssertTrue(t, ok)
+		testutils.AssertEqual(t, 3, len(chain.Frames()))
+		testutils.AssertLinesMatch(t, chain.Frames()[:1], "%+v",
+			[]string{
+				"",
+				chainFuncM,
+				errorTestFileM(chainCallerL),
+			},
+		)
+	})
 }
 
 func TestErrorStackTrace(t *testing.T) {
@@ -335,6 +358,23 @@ func TestErrorStackTrace(t *testing.T) {
 			},
 		)
 	})
+
+	t.Run("Chain", func(t *testing.T) {
+		err := ChainCaller(wrapperMsg, NewErrorCaller)
+		chain, ok := err.(interface{ StackTrace() []uintptr })
+
+		// Exists and wraps in a stack trace starting at current frame.
+		testutils.AssertTrue(t, ok)
+		testutils.AssertEqual(t, 3, len(chain.StackTrace()))
+		fr := chain.StackTrace()[0]
+		testutils.AssertLinesMatch(t, errors.Frames{errors.FrameFromPC(fr)}, "%+v",
+			[]string{
+				"",
+				chainFuncM,
+				errorTestFileM(chainCallerL),
+			},
+		)
+	})
 }
 
 func TestNilInputs(t *testing.T) {
@@ -354,6 +394,10 @@ func TestNilInputs(t *testing.T) {
 	t.Run("WithStackTrace", func(t *testing.T) {
 		testutils.AssertTrue(t, errors.WithStackTrace(nil) == nil)
 		testutils.AssertTrue(t, errors.WithStackTrace((*errorType)(nil)) == nil)
+	})
+	t.Run("Chain", func(t *testing.T) {
+		testutils.AssertTrue(t, errors.Chain(wrapperMsg, nil) != nil)
+		testutils.AssertTrue(t, errors.Unwrap(errors.Chain(wrapperMsg, nil)) == nil)
 	})
 	t.Run("WithMessage", func(t *testing.T) {
 		testutils.AssertTrue(t, errors.WithMessage(nil, "new msg") == nil)
@@ -464,6 +508,10 @@ func TestErrorFormat(t *testing.T) {
 	errChain = errors.Errorf("wrap: %w", errChain)
 	errStackThenFrame := errors.WithStackTrace(errChain)
 
+	root := errors.NewWithStackTrace("err")
+	wrapper1 := errors.Chain("wrapper1", root)
+	wrapper2 := errors.Chain("wrapper2", wrapper1)
+
 	t.Run("WithFrame", func(t *testing.T) {
 		cases := []struct {
 			format string
@@ -491,11 +539,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors_test.TestErrorFormat$",
-					errorTestFileM(`462`),
+					errorTestFileM(`506`),
 					"^github.com/secureworks/errors_test.TestErrorFormat$",
-					errorTestFileM(`463`),
+					errorTestFileM(`507`),
 					"^github.com/secureworks/errors_test.TestErrorFormat$",
-					errorTestFileM(`464`),
+					errorTestFileM(`508`),
 				},
 			},
 		}
@@ -537,7 +585,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors_test.TestErrorFormat$",
-					errorTestFileM(`465`),
+					errorTestFileM(`509`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},
@@ -565,6 +613,61 @@ func TestErrorFormat(t *testing.T) {
 				format: "%+v",
 				error:  errors.WithMessage(NewErrorCaller(), "replace err"),
 				expect: `replace err`,
+			},
+		}
+		for _, tt := range cases {
+			t.Run(tt.format, func(t *testing.T) {
+				testutils.AssertLinesMatch(t, tt.error, tt.format, tt.expect)
+			})
+		}
+	})
+
+	t.Run("Chain", func(t *testing.T) {
+		cases := []struct {
+			format string
+			error  error
+			expect interface{}
+		}{
+			{"%s", ChainCaller(wrapperMsg, NewErrorCaller), `wrapper`},
+			{"%q", ChainCaller(wrapperMsg, NewErrorCaller), fmt.Sprintf("\"%s\"", wrapperMsg)},
+			{"%v", ChainCaller(wrapperMsg, NewErrorCaller), `wrapper`},
+			{"%#v", ChainCaller(wrapperMsg, NewErrorCaller), fmt.Sprintf(`&errors.chain{"%s" "%s"}`, wrapperMsg, newMsg)},
+			{"%d", ChainCaller(wrapperMsg, NewErrorCaller), ``}, // empty
+			{
+				format: "%+v",
+				error:  ChainCaller(wrapperMsg, NewErrorCaller),
+				expect: []string{
+					wrapperMsg,
+					chainFuncM,
+					errorTestFileM(chainCallerL),
+					"^github.com/secureworks/errors_test\\.TestErrorFormat.func4$",
+					errorTestFileM(`\d+`),
+					`^testing\.tRunner$`,
+					`^.+/testing/testing.go:\d+$`,
+					newMsg,
+				},
+			},
+			{
+				// Test that subsequent chains DO print frames recursively.
+				format: "%+v",
+				error:  wrapper2,
+				expect: []string{
+					wrapperMsg + "2",
+					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					errorTestFileM(`513`),
+					`^testing\.tRunner$`,
+					`^.+/testing/testing.go:\d+$`,
+					wrapperMsg + "1",
+					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					errorTestFileM(`512`),
+					`^testing\.tRunner$`,
+					`^.+/testing/testing.go:\d+$`,
+					"err",
+					"^github.com/secureworks/errors_test.TestErrorFormat$",
+					errorTestFileM(`511`),
+					`^testing\.tRunner$`,
+					`^.+/testing/testing.go:\d+$`,
+				},
 			},
 		}
 		for _, tt := range cases {

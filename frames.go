@@ -32,26 +32,25 @@ import (
 // Frames are meant to be seen, so we have implemented the following
 // default formatting verbs on it:
 //
-//     "%s"  – the base name of the file (or `unknown`) and the line number (if known)
-//     "%q"  – the same as `%s` but wrapped in `"` delimiters
-//     "%d"  – the line number
-//     "%n"  – the basic function name, ie without a full package qualifier
-//     "%v"  – the full path of the file (or `unknown`) and the line number (if known)
-//     "%+v" – a standard line in a stack trace: a full function name on one line,
-//             and a full file name and line number on a second line
-//     "%#v" – a Golang representation with the type (`errors.Frame`)
+//	"%s"  – the base name of the file (or `unknown`) and the line number (if known)
+//	"%q"  – the same as `%s` but wrapped in `"` delimiters
+//	"%d"  – the line number
+//	"%n"  – the basic function name, ie without a full package qualifier
+//	"%v"  – the full path of the file (or `unknown`) and the line number (if known)
+//	"%+v" – a standard line in a stack trace: a full function name on one line,
+//	        and a full file name and line number on a second line
+//	"%#v" – a Golang representation with the type (`errors.Frame`)
 //
 // Marshaling a frame as text uses the `%+v` format.
 // Marshaling as JSON returns an object with location data:
 //
-//     {"function":"test.pkg.in/example.init","file":"/src/example.go","line":10}
+//	{"function":"test.pkg.in/example.init","file":"/src/example.go","line":10}
 //
 // A Frame is immutable, so no setters are provided, but you can copy
 // one trivially with:
 //
-//     function, file, line := oldFrame.Location()
-//     newFrame := errors.NewFrame(function, file, line)
-//
+//	function, file, line := oldFrame.Location()
+//	newFrame := errors.NewFrame(function, file, line)
 type Frame interface {
 	// Location returns the frame's caller's characteristics for help with
 	// identifying and debugging the codebase.
@@ -140,8 +139,14 @@ func (f *frame) Format(s fmt.State, verb rune) {
 	case 'v':
 		switch {
 		case s.Flag('+'):
+			prefix := ""
+			width, ok := s.Width()
+			if ok {
+				prefix = strings.Repeat(" ", width)
+			}
+			io.WriteString(s, prefix)
 			io.WriteString(s, escaper.Replace(function))
-			io.WriteString(s, "\n\t")
+			io.WriteString(s, "\n"+prefix+"\t")
 			io.WriteString(s, escaper.Replace(file))
 			io.WriteString(s, ":")
 			io.WriteString(s, strconv.Itoa(line))
@@ -399,7 +404,6 @@ type framer interface {
 // item types are assignable to one another.
 //
 // See: https://github.com/getsentry/sentry-go/blob/v0.12.0/stacktrace.go#L81
-//
 type stackTracer interface {
 	StackTrace() []uintptr
 }
