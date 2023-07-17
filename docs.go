@@ -26,7 +26,7 @@
 //	    return fmt.Errorf("contextual information: %w", err)
 //	}
 //
-// This helps us identify a root causs and place that cause in some
+// This helps us identify a root causes and place that cause in some
 // program context recursively.
 //
 // However, we are not always in control of the full extent of our
@@ -45,7 +45,7 @@
 //
 // 2. to chain or group errors and extract their contextual information;
 //
-// 3. to format errors with all oftheir context when printing them; and
+// 3. to format errors with all of their context when printing them; and
 //
 // 4. to retain a simple API for most use cases while retaining the
 // ability to directly interact with, or tune, error chains and groups.
