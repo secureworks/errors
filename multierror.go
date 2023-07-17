@@ -91,6 +91,8 @@ func NewMultiError(errors ...error) (merr *MultiError) {
 
 // flatten gets a list of errors from a multiError that is certain not
 // to contain any other multiErrors or wrapped multiErrors.
+//
+//goland:noinspection GoTypeAssertionOnErrors
 func flatten(m multiError) (errs []error) {
 	// We can skip a deep unwrap/flatten pass on a MultiError.
 	if merr, ok := m.(*MultiError); ok {
@@ -238,22 +240,22 @@ func (merr *MultiError) Format(s fmt.State, verb rune) {
 		case s.Flag('+'):
 			size := len(merr.Errors())
 			if size < 1 {
-				io.WriteString(s, "empty errors: []")
+				_, _ = io.WriteString(s, "empty errors: []")
 				return
 			}
 			buf := new(bytes.Buffer)
-			io.WriteString(s, "multiple errors:\n")
+			_, _ = io.WriteString(s, "multiple errors:\n")
 			for i, err := range merr.errors {
 				if i > 0 {
-					io.WriteString(s, "\n")
+					_, _ = io.WriteString(s, "\n")
 				}
-				fmt.Fprintf(buf, "\n* error %d of %d: %+v", i+1, size, err)
-				s.Write(buf.Bytes())
+				_, _ = fmt.Fprintf(buf, "\n* error %d of %d: %+v", i+1, size, err)
+				_, _ = s.Write(buf.Bytes())
 				buf.Reset()
 			}
-			io.WriteString(s, "\n")
+			_, _ = io.WriteString(s, "\n")
 		case s.Flag('#'):
-			io.WriteString(s, "*errors.MultiError")
+			_, _ = io.WriteString(s, "*errors.MultiError")
 			formatMessages(s, merr, [2]string{"{", "}"})
 		default:
 			formatMessages(s, merr, [2]string{"[", "]"})
@@ -269,15 +271,15 @@ func (merr *MultiError) Format(s fmt.State, verb rune) {
 
 func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 	first := true
-	io.WriteString(w, delimiters[0])
+	_, _ = io.WriteString(w, delimiters[0])
 	for _, err := range merr.Errors() {
 		if !first {
-			io.WriteString(w, "; ")
+			_, _ = io.WriteString(w, "; ")
 		}
-		io.WriteString(w, err.Error())
+		_, _ = io.WriteString(w, err.Error())
 		first = false
 	}
-	io.WriteString(w, delimiters[1])
+	_, _ = io.WriteString(w, delimiters[1])
 }
 
 // ErrorsFrom returns a list of errors that the supplied error is
@@ -297,6 +299,8 @@ func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 // contains just the error that was passed in.
 //
 // Callers of this function are free to modify the returned slice.
+//
+//goland:noinspection GoNameStartsWithPackageName,GoTypeAssertionOnErrors
 func ErrorsFrom(err error) []error {
 	if isNil(err) {
 		return nil

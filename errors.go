@@ -97,14 +97,14 @@ func (w *withStackTrace) Format(s fmt.State, verb rune) {
 			return
 		}
 		if s.Flag('#') {
-			fmt.Fprintf(s, "&errors.withStackTrace{%q}", w.error)
+			_, _ = fmt.Fprintf(s, "&errors.withStackTrace{%q}", w.error)
 			return
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, w.Error())
+		_, _ = io.WriteString(s, w.Error())
 	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
+		_, _ = fmt.Fprintf(s, "%q", w.Error())
 	default:
 		// empty
 	}

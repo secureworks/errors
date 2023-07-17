@@ -277,6 +277,7 @@ func TestAs(t *testing.T) {
 			testutils.AssertEqual(t, tt.want, matches)
 
 			if matches {
+				//goland:noinspection GoTypeAssertionOnErrors
 				ce := tt.args.target.(*customErr)
 				testutils.AssertEqual(t, err, *ce, "target set to new value")
 			}
