@@ -1,4 +1,4 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 // Attribution: portions of the below code and documentation are
 // modeled directly on the https://github.com/uber-go/multierr library,
