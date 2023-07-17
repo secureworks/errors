@@ -1,14 +1,10 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 // These are the exported package functions defined in the standard
 // library. They are copied here (along with their doc comments) so that
 // users can import this library alone.
 
 import stderrors "errors"
-
-// New returns an error that formats as the given text.
-// Each call to New returns a distinct error value even if the text is identical.
-func New(text string) error { return stderrors.New(text) }
 
 // Unwrap returns the result of calling the Unwrap method on err, if err's
 // type contains an Unwrap method returning error.
@@ -48,4 +44,7 @@ func Is(err, target error) bool { return stderrors.Is(err, target) }
 //
 // As panics if target is not a non-nil pointer to either a type that implements
 // error, or to any interface type.
-func As(err error, target interface{}) bool { return stderrors.As(err, target) }
+func As(err error, target interface{}) bool {
+	//goland:noinspection GoErrorsAs
+	return stderrors.As(err, target)
+}

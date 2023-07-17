@@ -3,11 +3,10 @@ package errors_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/secureworks/errors"
 	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/secureworks/errors"
 )
 
 var sharedPath = "/home/testuser/pkgs/errors/"
@@ -89,7 +88,7 @@ func ExampleFrame_printf() {
 	// %s:  examples_test.go:0
 	// %q:  "examples_test.go:0"
 	// %n:  ExampleFrame_printf
-	// %d:  77
+	// %d:  76
 	// %v:  /home/testuser/pkgs/errors/examples_test.go:0
 	// %#v: errors.Frame("/home/testuser/pkgs/errors/examples_test.go:0")
 	// %+v: github.com/secureworks/errors_test.ExampleFrame_printf
@@ -190,7 +189,7 @@ func ExampleFrames_jsonMarshal() {
 	//     {
 	//         "function": "github.com/secureworks/errors_test.ExampleFrames_jsonMarshal",
 	//         "file": "/home/testuser/pkgs/errors/examples_test.go",
-	//         "line": 180
+	//         "line": 179
 	//     }
 	// ]
 }
@@ -251,191 +250,102 @@ func ExampleNew() {
 	pprintf("%+v", err)
 
 	// Output: err message
-}
-
-func ExampleNewWithFrame() {
-	err := errors.NewWithFrame("err message")
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleNewWithFrame
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-}
-
-func ExampleNewWithFrameAt() {
-	err := errors.NewWithFrameAt("err message", 1)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-}
-
-func ExampleNewWithFrames() {
-	frames := errors.CallStackAtMost(0, 2)
-	err := errors.NewWithFrames("err message", frames)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleNewWithFrames
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-}
-
-func ExampleNewWithStackTrace() {
-	err := errors.NewWithStackTrace("err message")
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleNewWithStackTrace
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-	// testing.runExamples
-	// 	/go/src/testing/example.go:0
-	// testing.(*M).Run
-	// 	/go/src/testing/testing.go:0
-	// main.main
-	// 	_testmain.go:0
-	// runtime.main
-	// 	/go/src/runtime/proc.go:0
-}
-
-func ExampleWithFrame() {
-	err := errors.New("err message")
-	err = errors.WithFrame(err)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleWithFrame
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-}
-
-func ExampleWithFrameAt() {
-	err := errors.New("err message")
-	err = errors.WithFrameAt(err, 1)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-}
-
-func ExampleWithFrames() {
-	err := errors.New("err message")
-	frames := errors.CallStackAtMost(0, 2)
-	err = errors.WithFrames(err, frames)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleWithFrames
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-}
-
-func ExampleWithStackTrace() {
-	err := errors.New("err message")
-	err = errors.WithStackTrace(err)
-	pprintf("%+v", err)
-
-	// Output: err message
-	// github.com/secureworks/errors_test.ExampleWithStackTrace
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-	// testing.runExamples
-	// 	/go/src/testing/example.go:0
-	// testing.(*M).Run
-	// 	/go/src/testing/testing.go:0
-	// main.main
-	// 	_testmain.go:0
-	// runtime.main
-	// 	/go/src/runtime/proc.go:0
+	//      github.com/secureworks/errors_test.ExampleNew
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 }
 
 func ExampleErrorf() {
-	err := errors.New("err message")
-	err = errors.Errorf("outer context: %w", err)
-	pprintf("%+v", err)
+	root := errors.New("root")
+	wrapper := errors.New("wrapper: %w", root)
+	pprintf("%+v", wrapper)
 
-	// Output: outer context: err message
-	// github.com/secureworks/errors_test.ExampleErrorf
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
+	// Output: wrapper: root
+	//      github.com/secureworks/errors_test.ExampleErrorf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// CAUSED BY: root
+	//      github.com/secureworks/errors_test.ExampleErrorf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+
 }
 
 func ExampleErrorf_appendingDebuggingContext() {
-	err := errors.New("err message")
-	err = errors.Errorf("context: %w", err)
-	err = errors.Errorf("outermost context: %w", err)
-	pprintf("%+v", err)
+	root := errors.New("root")
+	wrapper1 := errors.New("wrapper1: %w", root)
+	wrapper2 := errors.New("wrapper2: %w", wrapper1)
+	pprintf("%+v", wrapper2)
 
-	// Output: outermost context: context: err message
-	// github.com/secureworks/errors_test.ExampleErrorf_appendingDebuggingContext
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// github.com/secureworks/errors_test.ExampleErrorf_appendingDebuggingContext
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-}
-
-func ExampleFramesFrom_appendedFrames() {
-	err := errors.New("err message")
-	err = errors.Errorf("context: %w", err)
-	err = errors.Errorf("outermost context: %w", err)
-	frames := errors.FramesFrom(err)
-	pprintf("\n%+v", frames)
-
-	// Output:
-	// github.com/secureworks/errors_test.ExampleFramesFrom_appendedFrames
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// github.com/secureworks/errors_test.ExampleFramesFrom_appendedFrames
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-
-}
-
-func ExampleFramesFrom_stackTrace() {
-	err := errors.NewWithStackTrace("err message")
-	err = errors.Errorf("context: %w", err)
-	err = errors.Errorf("outermost context: %w", err)
-	frames := errors.FramesFrom(err)
-	pprintf("\n%+v", frames)
-
-	// Output:
-	// github.com/secureworks/errors_test.ExampleFramesFrom_stackTrace
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-	// testing.runExamples
-	// 	/go/src/testing/example.go:0
-	// testing.(*M).Run
-	// 	/go/src/testing/testing.go:0
-	// main.main
-	// 	_testmain.go:0
-	// runtime.main
-	// 	/go/src/runtime/proc.go:0
-}
-
-func ExampleWithMessage() {
-	err := errors.New(newMsg)
-	err = errors.Errorf("context: %w", err)
-	err = errors.Errorf("outermost context: %w", err)
-	err = errors.WithMessage(err, "new err message")
-
-	fmt.Print(err)
-
-	// Output: new err message
-}
-
-func ExampleMask() {
-	err := errors.New(newMsg)
-	err = errors.Errorf("context: %w", err)
-	err = errors.Errorf("outermost context: %w", err)
-	err = errors.Mask(errors.WithMessage(err, "err"))
-
-	// Should show frames.
-	pprintf("%+v", err)
-
-	// Output: err
+	// Output: wrapper2: wrapper1: root
+	//      github.com/secureworks/errors_test.ExampleErrorf_appendingDebuggingContext
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// CAUSED BY: wrapper1: root
+	//      github.com/secureworks/errors_test.ExampleErrorf_appendingDebuggingContext
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// CAUSED BY: root
+	//      github.com/secureworks/errors_test.ExampleErrorf_appendingDebuggingContext
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 }
 
 type unknownErrorType struct {
@@ -449,29 +359,6 @@ func (e *unknownErrorType) Error() string {
 
 func (e *unknownErrorType) Unwrap() error {
 	return e.error
-}
-
-func ExampleOpaque() {
-	err := errors.New("err message")
-	err = errors.Errorf("context: %w", err)
-	err = &unknownErrorType{error: err, SecretValue: "secret data we don't want to leak"}
-	err = errors.Errorf("outermost context: %w", err)
-	err = errors.Opaque(err)
-
-	// Opaque squashes the error chain, removing any outside types that may
-	// have snuck in, while retaining all the errors package data we know
-	// about.
-	var unkErr *unknownErrorType
-	if errors.As(err, &unkErr) {
-		fmt.Println("leaked data:", unkErr.SecretValue)
-	}
-	pprintf("%+v", err)
-
-	// Output: outermost context: context: err message
-	// github.com/secureworks/errors_test.ExampleOpaque
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// github.com/secureworks/errors_test.ExampleOpaque
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
 }
 
 func ExampleNewMultiError() {
@@ -650,16 +537,16 @@ func ExampleMultiError_printf() {
 	merrEmpty := errors.NewMultiError()
 	merrFull := errors.NewMultiError(
 		errors.New("err1"),
-		errors.NewWithFrame("err2"),
-		errors.NewWithStackTrace("err3"),
+		errors.New("err2"),
+		errors.New("err3"),
 	)
-	merrWrapped := errors.Errorf("context: %w", merrFull)
+	merrWrapper := errors.New("context: %w", merrFull)
 
 	fmt.Println()
 	pprintf("1. %+v\n", merrNil)
 	pprintf("2. %+v\n", merrEmpty)
 	pprintf("3. %+v\n", merrFull)
-	pprintf("4. %+v\n", merrWrapped)
+	pprintf("4. %+v\n", merrWrapper)
 
 	// Output:
 	// 1. empty errors: []
@@ -667,28 +554,104 @@ func ExampleMultiError_printf() {
 	// 3. multiple errors:
 	//
 	// * error 1 of 3: err1
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 	//
 	// * error 2 of 3: err2
-	// github.com/secureworks/errors_test.ExampleMultiError_printf
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 	//
 	// * error 3 of 3: err3
-	// github.com/secureworks/errors_test.ExampleMultiError_printf
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
-	// testing.runExample
-	// 	/go/src/testing/run_example.go:0
-	// testing.runExamples
-	// 	/go/src/testing/example.go:0
-	// testing.(*M).Run
-	// 	/go/src/testing/testing.go:0
-	// main.main
-	// 	_testmain.go:0
-	// runtime.main
-	// 	/go/src/runtime/proc.go:0
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 	//
 	// 4. context: [err1; err2; err3]
-	// github.com/secureworks/errors_test.ExampleMultiError_printf
-	// 	/home/testuser/pkgs/errors/examples_test.go:0
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// CAUSED BY: multiple errors:
+	//
+	// * error 1 of 3: err1
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// * error 2 of 3: err2
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
+	//
+	// * error 3 of 3: err3
+	//      github.com/secureworks/errors_test.ExampleMultiError_printf
+	//      	/home/testuser/pkgs/errors/examples_test.go:0
+	//      testing.runExample
+	//      	/go/src/testing/run_example.go:0
+	//      testing.runExamples
+	//      	/go/src/testing/example.go:0
+	//      testing.(*M).Run
+	//      	/go/src/testing/testing.go:0
+	//      main.main
+	//      	_testmain.go:0
+	//      runtime.main
+	//      	/go/src/runtime/proc.go:0
 }
 
 func ExampleErrorsFrom() {

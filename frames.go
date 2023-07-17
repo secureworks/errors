@@ -1,4 +1,4 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 // Attribution: portions of the below code and documentation are modeled
 // directly on the https://pkg.go.dev/golang.org/x/xerrors library, used
@@ -32,26 +32,25 @@ import (
 // Frames are meant to be seen, so we have implemented the following
 // default formatting verbs on it:
 //
-//     "%s"  – the base name of the file (or `unknown`) and the line number (if known)
-//     "%q"  – the same as `%s` but wrapped in `"` delimiters
-//     "%d"  – the line number
-//     "%n"  – the basic function name, ie without a full package qualifier
-//     "%v"  – the full path of the file (or `unknown`) and the line number (if known)
-//     "%+v" – a standard line in a stack trace: a full function name on one line,
-//             and a full file name and line number on a second line
-//     "%#v" – a Golang representation with the type (`errors.Frame`)
+//	"%s"  – the base name of the file (or `unknown`) and the line number (if known)
+//	"%q"  – the same as `%s` but wrapped in `"` delimiters
+//	"%d"  – the line number
+//	"%n"  – the basic function name, ie without a full package qualifier
+//	"%v"  – the full path of the file (or `unknown`) and the line number (if known)
+//	"%+v" – a standard line in a stack trace: a full function name on one line,
+//	        and a full file name and line number on a second line
+//	"%#v" – a Golang representation with the type (`errors.Frame`)
 //
 // Marshaling a frame as text uses the `%+v` format.
 // Marshaling as JSON returns an object with location data:
 //
-//     {"function":"test.pkg.in/example.init","file":"/src/example.go","line":10}
+//	{"function":"test.pkg.in/example.init","file":"/src/example.go","line":10}
 //
 // A Frame is immutable, so no setters are provided, but you can copy
 // one trivially with:
 //
-//     function, file, line := oldFrame.Location()
-//     newFrame := errors.NewFrame(function, file, line)
-//
+//	function, file, line := oldFrame.Location()
+//	newFrame := errors.NewFrame(function, file, line)
 type Frame interface {
 	// Location returns the frame's caller's characteristics for help with
 	// identifying and debugging the codebase.
@@ -92,6 +91,8 @@ var _ interface { // Assert interface implementation.
 } = (*frame)(nil)
 
 // PC returns the Frame's local frame program counter.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) PC() uintptr { return f.pc }
 
 // Location returns the frame's caller's characteristics for help with
@@ -100,6 +101,8 @@ func (f *frame) PC() uintptr { return f.pc }
 // The results are evaluated and expanded lazily when the frame was
 // generated from the local call stack: Location is not safe for
 // concurrent access.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) Location() (function string, file string, line int) {
 	return f.getFunction(), f.getFile(), f.getLine()
 }
@@ -108,15 +111,17 @@ func (f *frame) Location() (function string, file string, line int) {
 // is structured when it is displayed. Including it in the interface
 // ensures that a stack of Frames can structure how the entire stack is
 // displayed.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) Format(s fmt.State, verb rune) {
 	var appendD = func(line int) {
 		if line > 0 {
-			io.WriteString(s, ":")
-			io.WriteString(s, strconv.Itoa(line))
+			_, _ = io.WriteString(s, ":")
+			_, _ = io.WriteString(s, strconv.Itoa(line))
 		}
 	}
 	var formatS = func(file string, line int) {
-		io.WriteString(s, escaper.Replace(filepath.Base(file)))
+		_, _ = io.WriteString(s, escaper.Replace(filepath.Base(file)))
 		appendD(line)
 	}
 
@@ -130,28 +135,34 @@ func (f *frame) Format(s fmt.State, verb rune) {
 	case 's':
 		formatS(file, line)
 	case 'q':
-		io.WriteString(s, `"`)
+		_, _ = io.WriteString(s, `"`)
 		formatS(file, line)
-		io.WriteString(s, `"`)
+		_, _ = io.WriteString(s, `"`)
 	case 'd':
-		io.WriteString(s, strconv.Itoa(line))
+		_, _ = io.WriteString(s, strconv.Itoa(line))
 	case 'n':
-		io.WriteString(s, escaper.Replace(runtime.FuncName(function)))
+		_, _ = io.WriteString(s, escaper.Replace(runtime.FuncName(function)))
 	case 'v':
 		switch {
 		case s.Flag('+'):
-			io.WriteString(s, escaper.Replace(function))
-			io.WriteString(s, "\n\t")
-			io.WriteString(s, escaper.Replace(file))
-			io.WriteString(s, ":")
-			io.WriteString(s, strconv.Itoa(line))
+			prefix := ""
+			width, ok := s.Width()
+			if ok {
+				prefix = strings.Repeat(" ", width)
+			}
+			_, _ = io.WriteString(s, prefix)
+			_, _ = io.WriteString(s, escaper.Replace(function))
+			_, _ = io.WriteString(s, "\n"+prefix+"\t")
+			_, _ = io.WriteString(s, escaper.Replace(file))
+			_, _ = io.WriteString(s, ":")
+			_, _ = io.WriteString(s, strconv.Itoa(line))
 		case s.Flag('#'):
-			io.WriteString(s, "errors.Frame(\"")
-			io.WriteString(s, escaper.Replace(file))
+			_, _ = io.WriteString(s, "errors.Frame(\"")
+			_, _ = io.WriteString(s, escaper.Replace(file))
 			appendD(line)
-			io.WriteString(s, "\")")
+			_, _ = io.WriteString(s, "\")")
 		default:
-			io.WriteString(s, escaper.Replace(file))
+			_, _ = io.WriteString(s, escaper.Replace(file))
 			appendD(line)
 		}
 	}
@@ -159,6 +170,8 @@ func (f *frame) Format(s fmt.State, verb rune) {
 
 // MarshalJSON allows this interface to integrate its default formatting
 // into JSON for serialization.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f frame) MarshalJSON() ([]byte, error) {
 	function, file, line := f.Location()
 	str := fmt.Sprintf(`{"function":%q,"file":%q,"line":%d}`,
@@ -176,6 +189,8 @@ var unescaper = strings.NewReplacer(`\t`, "\t", `\n`, "\n", `\"`, `"`, `\\`, `\`
 // getFunction gets the frame's full caller function name. Prioritizes
 // synthetic values if available, otherwise expands the pc using runtime
 // and memoizes the result.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) getFunction() (function string) {
 	function = f.function
 	if function == "" {
@@ -191,6 +206,8 @@ func (f *frame) getFunction() (function string) {
 // getFile gets the frame's caller's filename. Prioritizes synthetic
 // values if available, otherwise expands the pc using runtime and
 // memoizes the result.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) getFile() (file string) {
 	file = f.file
 	if file == "" {
@@ -206,6 +223,8 @@ func (f *frame) getFile() (file string) {
 // getLine gets the frame's caller's file line. Prioritizes synthetic
 // values if available, otherwise expands the pc using runtime and
 // memoizes the result.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) getLine() (line int) {
 	line = f.line
 	if line == 0 {
@@ -220,6 +239,8 @@ func (f *frame) getLine() (line int) {
 // fn is the way to cleanly access the runtimeFn field: if none is found
 // it attempts to look it up from the frame location program counter
 // (pc). This lookup will only happen once.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (f *frame) fn() *stdruntime.Func {
 	if f.runtimeFn == nil && f.pc != 0 {
 		f.runtimeFn = stdruntime.FuncForPC(f.pc)
@@ -298,11 +319,11 @@ func (ff Frames) Format(s fmt.State, verb rune) {
 		switch {
 		case s.Flag('+'):
 			for _, f := range ff {
-				io.WriteString(s, "\n")
+				_, _ = io.WriteString(s, "\n")
 				f.(fmt.Formatter).Format(s, verb)
 			}
 		case s.Flag('#'):
-			io.WriteString(s, "errors.Frames")
+			_, _ = io.WriteString(s, "errors.Frames")
 			ff.formatSlice(s, 's', [2]string{"{", "}"})
 		default:
 			ff.formatSlice(s, verb, [2]string{"[", "]"})
@@ -341,14 +362,14 @@ func (ff Frames) MarshalJSON() ([]byte, error) {
 
 // formatSlice wraps a list of formatted frames with brackets.
 func (ff Frames) formatSlice(s fmt.State, verb rune, delimiters [2]string) {
-	io.WriteString(s, delimiters[0])
+	_, _ = io.WriteString(s, delimiters[0])
 	for i, f := range ff {
 		if i > 0 {
-			io.WriteString(s, " ")
+			_, _ = io.WriteString(s, " ")
 		}
 		f.(fmt.Formatter).Format(s, verb)
 	}
-	io.WriteString(s, delimiters[1])
+	_, _ = io.WriteString(s, delimiters[1])
 }
 
 // FramesFromBytes parses a stack trace or stack dump provided as bytes
@@ -384,14 +405,20 @@ func FramesFromJSON(byt []byte) (Frames, error) {
 	return ff, nil
 }
 
-// framer defines an interface for accessing Frames, which can
+// Framer defines an interface for accessing Frames, which can
 // represent a stack trace or a subset of a stack trace. This is the
 // preferred method for getting stack information in this package.
-type framer interface {
+type Framer interface {
 	Frames() Frames
 }
 
-// stackTracer defines an interface for accessing a slice of `uintptr`s,
+// ChainFramer defines an interface for accessing all frames from an entire
+// error chain.
+type ChainFramer interface {
+	ChainFrames() []Frames
+}
+
+// StackTracer defines an interface for accessing a slice of `uintptr`s,
 // which can be trivially converted to a
 // `github.com/pkg/errors.StackTrace` (and will be completely
 // interchangeable once we use Go 1.18 Generics), but also works where
@@ -399,18 +426,23 @@ type framer interface {
 // item types are assignable to one another.
 //
 // See: https://github.com/getsentry/sentry-go/blob/v0.12.0/stacktrace.go#L81
-//
-type stackTracer interface {
+type StackTracer interface {
 	StackTrace() []uintptr
 }
 
+// ChainStackTracer defines an interface for accessing stack traces of a complete
+// error chain.
+type ChainStackTracer interface {
+	ChainStackTrace() [][]uintptr
+}
+
 // frames stores a slice of frame structs and implements both the
-// StackFrames and stackTracer interfaces.
+// StackFrames and StackTracer interfaces.
 type frames []*frame
 
 var _ interface { // Assert interface implementation.
-	stackTracer
-	framer
+	StackTracer
+	Framer
 	json.Marshaler
 } = (frames)(nil)
 
@@ -428,7 +460,7 @@ func (ff frames) Frames() Frames {
 	return st
 }
 
-// StackTrace implements the stackTracer interface, returning a slice of
+// StackTrace implements the StackTracer interface, returning a slice of
 // program counters.
 func (ff frames) StackTrace() []uintptr {
 	st := make([]uintptr, len(ff))
@@ -536,13 +568,4 @@ func framesFromJSON(byt []byte) ([]*frame, error) {
 		).(*frame)
 	}
 	return frames, nil
-}
-
-// framesFromPCs turns a stack trace of program counters into Frames.
-func framesFromPCs(pcs []uintptr) Frames {
-	ff := make(Frames, len(pcs))
-	for i, pc := range pcs {
-		ff[i] = FrameFromPC(pc)
-	}
-	return ff
 }
