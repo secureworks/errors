@@ -13,21 +13,21 @@ package errors
 // https://github.com/pkg/errors/blob/master/LICENSE
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"regexp"
+	"strings"
 )
 
+// Unwrapper is an interface implemented by errors from this package, and allows clients to unwrap the underlying error
+// in the chain (if any). It is implemented regardless of the presence of any underlying error in the chain.
 type Unwrapper interface {
 	Unwrap() error
 }
 
-// Stack trace error wrapper.
-
-// withStackTrace implements an error type annotated with a list of
-// frames as a full stack trace.
-type withStackTrace struct {
+// errorImpl implements an error type that provides a message, optional causing error (next in the chain), and the
+// stack-trace that led to its creation.
+type errorImpl struct {
+	msg    string
 	error  error
 	frames frames
 }
@@ -38,70 +38,180 @@ var _ interface { // Assert interface implementation.
 	Framer
 	Unwrapper
 	fmt.Formatter
-} = (*withStackTrace)(nil)
+	ChainStackTracer
+	ChainFramer
+} = (*errorImpl)(nil)
 
-// NewWithStackTrace returns a new error annotated with a stack trace.
-func NewWithStackTrace(msg string) error {
-	return &withStackTrace{
-		error:  New(msg),
+// New returns a new error that formats as the given text, args and optionally a wrapped error, and also captures the
+// current stack trace that led to its creation. The following permutations of arguments are allowed:
+//
+//  1. no arguments - an empty error with a stack trace
+//  2. a string message and optionally formatting arguments (which may include an error to wrap)
+//  3. an error to wrap (in this case no message is presented)
+//
+// Note, however, that unlike fmt.Errorf, when you are wrapping another error you do NOT have to add the "%w" verb to
+// the message - which allows you to hide the wrapped error's message (when this is appropriate - e.g. when presenting
+// the wrapping error to a user).
+//
+// For example:
+//
+//	root := errors.New("permission 'admin.read.tenants' is missing")
+//	err := errors.New("permission denied", root)
+//	fmt.Println(err) // <- will print "permission denied"
+//	fmt.Printf("%+v\n", err) // <- prints full error chain with stack traces of the wrapping & wrapped errors
+func New(args ...interface{}) error {
+
+	// if no args - just an empty error with a stack trace
+	if len(args) == 0 {
+		return &errorImpl{
+			msg:    "",
+			error:  nil,
+			frames: getStack(3),
+		}
+	}
+
+	// if first arg is an error - ensure no other args are given, and use it as the wrapped error
+	if e, ok := args[0].(error); ok {
+		if len(args) > 1 {
+			panic("errors.New requires no additional arguments are provided when the first argument is an error")
+		} else {
+			return &errorImpl{
+				msg:    "",
+				error:  e,
+				frames: getStack(3),
+			}
+		}
+	}
+
+	var msg string
+	var wrapped error
+	var wrappedIndex = -1
+
+	// ensure first arg is a string, and use it as the message, and remove it from the list of args
+	if s, ok := args[0].(string); !ok {
+		panic("errors.New requires that the first argument (if provided) is either a string or an error")
+	} else {
+		msg = s
+		args = args[1:]
+	}
+
+	// find wrapped error, if any, and ensure
+	for i, e := range args {
+		if e, ok := e.(error); ok {
+			if wrapped != nil {
+				// TODO: we can instead create a multi-error here instead! e.g. "errors.New("foo", err1, err2)"
+				panic("errors.New does not support multiple error arguments")
+			}
+			wrapped = e
+			wrappedIndex = i
+		}
+	}
+
+	// If msg does not contain "%w", we are to wrap the given error, but not show it in our message
+	// Therefore, we remove the wrapped error from the args, so that our call to "fmt.Sprintf" does not
+	// complain about extra arguments
+	// TODO: we need a more robust way to detect if user specified "%w" or not
+	if strings.Contains(msg, "%w") {
+		if wrapped == nil {
+			panic("errors.New requires a wrapped error when using the %w verb")
+		} else {
+			msg = fmt.Errorf(msg, args...).Error()
+		}
+	} else {
+		if wrapped != nil {
+			args = append(args[:wrappedIndex], args[wrappedIndex+1:]...)
+		}
+		msg = fmt.Sprintf(msg, args...)
+	}
+
+	return &errorImpl{
+		msg:    msg,
+		error:  wrapped,
 		frames: getStack(3),
 	}
 }
 
-// WithStackTrace adds a stack trace to the error by wrapping it.
-func WithStackTrace(err error) error {
-	if isNil(err) {
-		return nil
-	}
-	return &withStackTrace{
-		error:  err,
-		frames: getStack(3),
-	}
-}
+// Error returns this error's message.
+func (w *errorImpl) Error() string { return w.msg }
 
-func (w *withStackTrace) Error() string { return w.error.Error() }
-
-func (w *withStackTrace) Unwrap() error { return w.error }
+// Unwrap returns the next error in the error chain, if any.
+func (w *errorImpl) Unwrap() error { return w.error }
 
 // StackTrace returns the call stack frames associated with this error
 // in the form of program counters; for examples of this see
-// https://pkg.go.dev/runtime or
-// https://pkg.go.dev/github.com/pkg/errors#Frame, both of which use the
-// uintptr type to represent program counters
+// https://pkg.go.dev/runtime or https://pkg.go.dev/github.com/pkg/errors#Frame,
+// both of which use the uintptr type to represent program counters
 //
-// This method is only available on when the error was generated using
-// WithStackTrace or NewWithStackTrace and only returns the frames
-// associated with the stack trace on *this specific error* in the error
-// chain. This interface is provided to ease interoperability with error
+// This method returns the frames associated with the stack trace on
+// *this specific error* in the error chain.
+//
+// This interface is provided to ease interoperability with error
 // packages or APIs that expect stack traces to be represented with
 // uintptrs: pPrefer the Frames method for general interoperability
 // across this package.
-func (w *withStackTrace) StackTrace() []uintptr {
+func (w *errorImpl) StackTrace() []uintptr {
 	return w.frames.StackTrace()
+}
+
+// ChainStackTrace returns all call stack frames associated with this error
+// chain, in the form of program counters; for examples of this see
+// https://pkg.go.dev/runtime or https://pkg.go.dev/github.com/pkg/errors#Frame,
+// both of which use the uintptr type to represent program counters
+//
+// This interface is provided to ease interoperability with error packages or APIs
+// that expect stack traces to be represented with uintptrs: prefer the
+// Frames method for general interoperability across this package.
+func (w *errorImpl) ChainStackTrace() [][]uintptr {
+	var traces [][]uintptr
+	var e error = w
+	for {
+		if st, ok := e.(StackTracer); ok {
+			traces = append(traces, st.StackTrace())
+		}
+		if e = Unwrap(e); e == nil {
+			break
+		}
+	}
+	return traces
 }
 
 // Frames returns the call stack frames associated with this error.
 //
 // This method only returns the frames associated with the stack trace
-// on *this specific error* in the error chain. Use FramesFrom to get
-// all the Frames associated with an error chain.
-func (w *withStackTrace) Frames() Frames {
+// on *this specific error* in the error chain.
+func (w *errorImpl) Frames() Frames {
 	return w.frames.Frames()
 }
 
-func (w *withStackTrace) Format(s fmt.State, verb rune) {
+// ChainFrames returns the call stack frames associated with the entire error chain.
+func (w *errorImpl) ChainFrames() []Frames {
+	var chainFrames []Frames
+	var e error = w
+	for {
+		if st, ok := e.(Framer); ok {
+			chainFrames = append(chainFrames, st.Frames())
+		}
+		if e = Unwrap(e); e == nil {
+			break
+		}
+	}
+	return chainFrames
+}
+
+// Format allows this error to integrate into Go's formatted strings framework.
+// See the package documentation for supported formats.
+func (w *errorImpl) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			// NOTE: removes '+' from wrapped error formatters, to stop recursive
-			// calls to FramesFrom. May have unintended consequences for errors from
-			// outside libraries. Don't mix and match.
-			fmt.Fprintf(s, "%v", w.error)
-			FramesFrom(w).Format(s, verb)
+			_, _ = fmt.Fprintf(s, "%s%+5v", w.Error(), w.Frames())
+			if cause := w.Unwrap(); cause != nil {
+				_, _ = fmt.Fprintf(s, "\n\nCAUSED BY: %+5v", cause)
+			}
 			return
 		}
 		if s.Flag('#') {
-			_, _ = fmt.Fprintf(s, "&errors.withStackTrace{%q}", w.error)
+			_, _ = fmt.Fprintf(s, "&errors.errorImpl{%q %q}", w.Error(), w.error)
 			return
 		}
 		fallthrough
@@ -109,236 +219,6 @@ func (w *withStackTrace) Format(s fmt.State, verb rune) {
 		_, _ = io.WriteString(s, w.Error())
 	case 'q':
 		_, _ = fmt.Fprintf(s, "%q", w.Error())
-	default:
-		// empty
-	}
-}
-
-// Caller frame error wrapper.
-
-// withFrames implements an error type annotated with list of Frames.
-type withFrames struct {
-	error  error
-	frames frames
-}
-
-var _ interface { // Assert interface implementation.
-	error
-	framer
-	Unwrap() error
-	fmt.Formatter
-} = (*withFrames)(nil)
-
-// NewWithFrame returns a new error annotated with a call stack frame.
-func NewWithFrame(msg string) error {
-	return NewWithFrameAt(msg, 1)
-}
-
-// WithFrame adds a call stack frame to the error by wrapping it.
-func WithFrame(err error) error {
-	return WithFrameAt(err, 1)
-}
-
-// NewWithFrameAt returns a new error annotated with a call stack frame.
-// The second param allows you to tune how many callers to skip (in case
-// this is called in a helper you want to ignore, for example).
-func NewWithFrameAt(msg string, skipCallers int) error {
-	return &withFrames{
-		error:  New(msg),
-		frames: frames{getFrame(3 + skipCallers)},
-	}
-}
-
-// WithFrameAt adds a call stack frame to the error by wrapping it. The
-// second param allows you to tune how many callers to skip (in case
-// this is called in a helper you want to ignore, for example).
-func WithFrameAt(err error, skipCallers int) error {
-	if isNil(err) {
-		return nil
-	}
-	return &withFrames{
-		error:  err,
-		frames: frames{getFrame(3 + skipCallers)},
-	}
-}
-
-// NewWithFrames returns a new error annotated with a list of frames.
-func NewWithFrames(msg string, ff Frames) error {
-	return WithFrames(New(msg), ff)
-}
-
-// WithFrames adds a list of frames to the error by wrapping it.
-func WithFrames(err error, ff Frames) error {
-	if isNil(err) {
-		return nil
-	}
-	fframes := make([]*frame, len(ff))
-	for i, fr := range ff {
-		pc := PCFromFrame(fr)
-		if pc != 0 {
-			fframes[i] = frameFromPC(pc)
-			continue
-		}
-		fframes[i] = newFrameFrom(fr)
-	}
-	return &withFrames{
-		error:  err,
-		frames: fframes,
-	}
-}
-
-var errorfFormatMatcher = regexp.MustCompile(`%(\[\d+])?w`)
-
-// Errorf is a shorthand for:
-//
-//	errors.WithFrame(fmt.Errorf("some msg: %w", err))
-//
-// It is made available to support the best practice of adding a call
-// stack frame to the error context alongside a message when building a
-// chain. When possible, prefer using the full syntax instead of this
-// shorthand for clarity.
-//
-// Using an invalid format string (one that does not wrap the given
-// error) causes this method to panic.
-func Errorf(format string, values ...interface{}) error {
-	if !errorfFormatMatcher.MatchString(format) {
-		panic(NewWithStackTrace(fmt.Sprintf("invalid use of errors.Errorf: "+
-			"format string must wrap an error, but \"%%w\" not found: %q", format)))
-	}
-	return &withFrames{
-		error:  fmt.Errorf(format, values...),
-		frames: frames{getFrame(3)},
-	}
-}
-
-func (w *withFrames) Error() string { return w.error.Error() }
-
-func (w *withFrames) Unwrap() error { return w.error }
-
-// Frames returns the call stack frame associated with this error.
-//
-// This method only returns the frame on *this specific error* in the
-// error chain (the result will have a length of 0 or 1). Use FramesFrom
-// to get all the Frames associated with an error chain.
-func (w *withFrames) Frames() Frames {
-	return w.frames.Frames()
-}
-
-func (w *withFrames) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			// NOTE: removes '+' from wrapped error formatters, to stop recursive
-			// calls to FramesFrom. May have unintended consequences for errors from
-			// outside libraries. Don't mix and match.
-			fmt.Fprintf(s, "%v", w.error)
-			FramesFrom(w).Format(s, verb)
-			return
-		}
-		if s.Flag('#') {
-			fmt.Fprintf(s, "&errors.withFrames{%q}", w.error)
-			return
-		}
-		fallthrough
-	case 's':
-		io.WriteString(s, w.Error())
-	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
-	default:
-		// empty
-	}
-}
-
-// Helpers to extract data from the error interface.
-
-// FramesFrom extracts all the Frames annotated across an error chain in
-// order (if any). To do this it traverses the chain while aggregating
-// frames.
-//
-// If this method finds any frames on an error that were added as a
-// stack trace (ie, the error was wrapped by WithStackTrace) then the
-// stack trace deepest in the chain is returned alone, ignoring all
-// other stack traces and frames. This lets us we retain the most
-// information possible without returning a confusing frame set.
-// Therefore, try not to mix the WithFrame and WithStackTrace patterns
-// in a single error chain.
-func FramesFrom(err error) (ff Frames) {
-	var traceFound bool
-	for !isNil(err) {
-		var errHasTrace bool
-		traceErr, ok := err.(stackTracer)
-		if ok {
-			traceFound = true
-			errHasTrace = true
-		}
-		if framesErr, ok := err.(framer); ok {
-			if traceFound && !errHasTrace { // Ignore frames after trace.
-			} else if errHasTrace {
-				ff = framesFromPCs(traceErr.StackTrace()) // Set, not append, traces.
-			} else {
-				ff = prependFrame(ff, framesErr.Frames()) // Prepend frames.
-			}
-		} else if errHasTrace { // Set, not append, traces.
-			ff = framesFromPCs(traceErr.StackTrace())
-		}
-		err = Unwrap(err)
-	}
-	return
-}
-
-func prependFrame(slice Frames, frames Frames) Frames {
-	slice = append(slice, frames...)
-	copy(slice[len(frames):], slice)
-	copy(slice, frames)
-	return slice
-}
-
-// Helpers to remove context from the error interface.
-
-// Message error wrapper.
-
-// withMessage implements an error type annotated with a message that
-// overwrites the wrapped message context.
-type withMessage struct {
-	error   error
-	message string
-}
-
-var _ interface { // Assert interface implementation.
-	error
-	Unwrap() error
-	fmt.Formatter
-} = (*withMessage)(nil)
-
-// WithMessage overwrites the message for the error by wrapping it. The
-// error chain is maintained so that As, Is, and FramesFrom all continue
-// to work.
-func WithMessage(err error, msg string) error {
-	if isNil(err) {
-		return nil
-	}
-	return &withMessage{
-		error:   err,
-		message: msg,
-	}
-}
-
-func (w *withMessage) Error() string { return w.message }
-
-func (w *withMessage) Unwrap() error { return w.error }
-
-func (w *withMessage) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('#') {
-			fmt.Fprintf(s, "&errors.withMessage{%q}", w.Error())
-			return
-		}
-		fallthrough
-	case 's':
-		io.WriteString(s, w.Error())
-	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
 	default:
 		// empty
 	}
@@ -369,45 +249,31 @@ func Opaque(err error) error {
 	if isNil(err) {
 		return nil
 	}
-	newErr := Mask(err)
-	if fframes := FramesFrom(err); len(fframes) > 0 {
-		newErr = WithFrames(newErr, fframes)
-	}
-	return newErr
-}
 
-// Error deserialization.
-
-// ErrorFromBytes parses a stack trace or stack dump provided as bytes
-// into an error. The format of the text is expected to match the output
-// of printing with a formatter using the `%+v` verb. When an error is
-// successfully parsed the second result is true; otherwise it is false.
-// If you receive an error and the second result is false, well congrats
-// you got an error.
-//
-// Currently, this only supports single errors with or without a stack
-// trace or appended frames.
-//
-// TODO(PH): ensure ErrorFromBytes works with: multiError.
-func ErrorFromBytes(byt []byte) (err error, ok bool) {
-	trimbyt := bytes.TrimRight(byt, "\n")
-	if len(trimbyt) == 0 || bytes.Equal(trimbyt, []byte("nil")) || bytes.Equal(trimbyt, []byte("<nil>")) {
-		return nil, false
+	var ff frames
+	if st, ok := err.(Framer); ok {
+		stack := st.Frames()
+		ff := make([]*frame, len(stack))
+		for i, fr := range stack {
+			pc := PCFromFrame(fr)
+			if pc != 0 {
+				ff[i] = frameFromPC(pc)
+				continue
+			}
+			ff[i] = newFrameFrom(fr)
+		}
+	} else {
+		ff = getStack(3)
 	}
 
-	ok = true
-	n := bytes.IndexByte(byt, '\n')
-	if n == -1 {
-		return New(string(byt)), true
+	var cause error
+	if st, ok := err.(Unwrapper); ok {
+		cause = st.Unwrap()
 	}
 
-	err = New(string(byt[:n]))
-	stack, actualErr := FramesFromBytes(byt[n+1:])
-	if !isNil(actualErr) {
-		return actualErr, false
+	return &errorImpl{
+		msg:    err.Error(),
+		error:  Opaque(cause),
+		frames: ff,
 	}
-	if len(stack) > 0 {
-		err = WithFrames(err, stack)
-	}
-	return
 }

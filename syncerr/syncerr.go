@@ -2,7 +2,6 @@ package syncerr
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -164,11 +163,7 @@ func wrapWithNames(names []string, err error) error {
 	if len(names) == 0 {
 		return err
 	}
-	return errors.WithFrameAt(
-		fmt.Errorf("%s: %w",
-			strings.Join(names, ": "),
-			err,
-		), 1)
+	return errors.New("%s: %w", strings.Join(names, ": "), err)
 }
 
 func isNil(err error) bool {

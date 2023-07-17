@@ -569,12 +569,3 @@ func framesFromJSON(byt []byte) ([]*frame, error) {
 	}
 	return frames, nil
 }
-
-// framesFromPCs turns a stack trace of program counters into Frames.
-func framesFromPCs(pcs []uintptr) Frames {
-	ff := make(Frames, len(pcs))
-	for i, pc := range pcs {
-		ff[i] = FrameFromPC(pc)
-	}
-	return ff
-}

@@ -1,7 +1,6 @@
 package errors_test
 
 import (
-	stderrors "errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -25,125 +24,38 @@ var (
 	})(nil)).Elem()
 )
 
-func TestNew(t *testing.T) {
-	libErr := errors.New("new err")
-	stdErr := stderrors.New("new err")
-
-	testutils.AssertNotNil(t, libErr)
-	testutils.AssertEqual(t, stdErr, libErr)
-	testutils.AssertEqual(t, stdErr.Error(), libErr.Error())
-}
-
-func TestNewWith(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-		wrap bool
-		impl []reflect.Type
-	}{
-		{
-			name: "Stack",
-			err:  errors.NewWithStackTrace("new err"),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramer,
-				stackTracer,
-			},
-		},
-		{
-			name: "Frame",
-			err:  errors.NewWithFrame("new err"),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramer,
-			},
-		},
-		{
-			name: "FrameAt",
-			err:  errors.NewWithFrameAt("new err", 0),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramer,
-			},
-		},
-		{
-			name: "Frames",
-			err:  errors.NewWithFrames("new err", errors.Frames{}),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramer,
-			},
-		},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			// Unwraps.
-			baseErr := errors.Unwrap(tt.err)
-			if tt.wrap {
-				testutils.AssertEqual(t, "new err", baseErr.Error())
-			} else {
-				testutils.AssertNil(t, baseErr)
-			}
-
-			// Implements.
-			for _, iface := range tt.impl {
-				testutils.AssertTrue(t, reflect.TypeOf(tt.err).Implements(iface))
-			}
-		})
-	}
-}
-
 func TestUnwrap(t *testing.T) {
-	err := errors.New("new err")
-
-	type args struct {
-		err error
-	}
+	err := errors.New("root")
 	cases := []struct {
 		name string
-		args args
+		args error
 		want error
 	}{
 		{
-			name: "with stack",
-			args: args{err: errors.WithStackTrace(err)},
-			want: err,
+			name: "unwrapped is nil for root",
+			args: err,
+			want: nil,
 		},
 		{
-			name: "with frame",
-			args: args{err: errors.WithFrame(err)},
-			want: err,
-		},
-		{
-			name: "with frames",
-			args: args{err: errors.WithFrames(err, errors.Frames{})},
-			want: err,
-		},
-		{
-			name: "with message",
-			args: args{err: errors.WithMessage(err, "replace err")},
+			name: "wrapper",
+			args: errors.New("wrapper: %w", err),
 			want: err,
 		},
 		{
 			name: "std errors compatibility",
-			args: args{err: fmt.Errorf("wrap: %w", err)},
+			args: fmt.Errorf("wrap: %w", err),
 			want: err,
-		},
-		{
-			name: "unwrapped is nil",
-			args: args{err: err},
-			want: nil,
 		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.want, errors.Unwrap(tt.args.err))
+			testutils.AssertEqual(t, tt.want, errors.Unwrap(tt.args))
 		})
 	}
 }
 
 func TestIs(t *testing.T) {
-	err := errors.New("new err")
+	err := errors.New("root")
 
 	type args struct {
 		err    error
@@ -155,33 +67,17 @@ func TestIs(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "with stack",
+			name: "different error",
 			args: args{
-				err:    errors.WithStackTrace(err),
+				err:    errors.New("new"),
 				target: err,
 			},
-			want: true,
+			want: false,
 		},
 		{
-			name: "with frame",
+			name: "wrapper",
 			args: args{
-				err:    errors.WithFrame(err),
-				target: err,
-			},
-			want: true,
-		},
-		{
-			name: "with frames",
-			args: args{
-				err:    errors.WithFrames(err, errors.Frames{}),
-				target: err,
-			},
-			want: true,
-		},
-		{
-			name: "with message",
-			args: args{
-				err:    errors.WithMessage(err, "replace err"),
+				err:    errors.New("wrapper: %w", err),
 				target: err,
 			},
 			want: true,
@@ -223,33 +119,17 @@ func TestAs(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "with stack",
+			name: "unrelated",
 			args: args{
-				err:    errors.WithStackTrace(err),
+				err:    errors.New("new1"),
 				target: new(customErr),
 			},
-			want: true,
+			want: false,
 		},
 		{
-			name: "with frame",
+			name: "wrapper",
 			args: args{
-				err:    errors.WithFrame(err),
-				target: new(customErr),
-			},
-			want: true,
-		},
-		{
-			name: "with frame",
-			args: args{
-				err:    errors.WithFrames(err, errors.Frames{}),
-				target: new(customErr),
-			},
-			want: true,
-		},
-		{
-			name: "with message",
-			args: args{
-				err:    errors.WithMessage(err, "replace err"),
+				err:    errors.New("wrapper: %w", err),
 				target: new(customErr),
 			},
 			want: true,

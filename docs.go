@@ -66,7 +66,7 @@
 //
 //	import "github.com/secureworks/errors"
 //
-//	var Err = errors.New("example err") // Same as if we had used: import "errors"
+//	var Err = errors.New("example err") // Still compiles after you switch from: import "errors"
 //
 // # Stack traces or call frames
 //
@@ -106,42 +106,31 @@
 // frames" approach is supported by
 // https://pkg.go.dev/golang.org/x/xerrors, as examples.
 //
-// Since the latter approach (appending frames) leads to more compact
-// and efficient debugging information, and since it mirrors the Go
-// idiom of recursively building an error context, this package prefers
-// its use and includes the errors.Errorf function to that effect. Using
-// stack traces is fully supported, however, and errors.FramesFrom will
-// extract a stack trace, even if there are appended frames in an error
-// chain (if both are available), in order to avoid context loss.
+// This package follows the "attaching a stack trace" approach for errors
+// it generates, despite that being more "verbose" than the more compact
+// "appending frames" approach, for ease of use and simplicity.
 //
 // # Wrapping Errors
 //
-// This package provides functions for adding context to an error with a
-// group of "error wrappers" that build an "error chain" of values that
-// recursively add that context to some base error. The error wrappers
-// it provides are:
+// This package generates errors that capture context automatically whether
+// they are wrapping errors or not. When it is wrapping errors, it allows to
+// build an "error chain" in which each error wraps an error (or multiple ones;
+// see below).
 //
-//	// Attach a stack trace starting at the current caller.
-//	err := errors.WithStackTrace(err)
-//	// Append a frame for the current caller.
-//	err = errors.WithFrame(err)
-//	// Appends a frame for the caller *n* steps up the chain (in this case, 1).
-//	err = errors.WithFrameAt(err, 1)
+// The way to build such error chains stays the same as using the standard library's
+// fmt.Errorf function, but using errors.New instead. Here are a few examples - all
+// of which capture the current stack trace:
 //
-// These wrappers are accompanied by versions that create a new error
-// and immediately wrap it: errors.NewWithStackTrace, errors.NewWithFrame,
-// and errors.NewWithFrameAt.
+//	// Creates a simple standalone error:
+//	err := errors.New("ooops")
 //
-// A final helper, errors.Errorf, is provided to allow for the common
-// idiom:
+//	// Wrap another error, generating a "chain" (of just two elements):
+//	err := errors.New("customer load error: %w", errors.New("file not found"))
 //
-//	err := errors.WithFrame(fmt.Errorf("message context: %w", err))
-//	// ... the same as:
-//	// err := errors.Errorf("message context: %w", err)
-//
-// In order to ensure the user correctly structures errors.Errorf, the
-// function will panic if you are not wrapping an error with the "%w"
-// verb.
+//	// Wrap another error, but without including its message in the wrapping error's message:
+//	err := errors.New("customer load error", errors.New("file not found"))
+//	fmt.Println(err) // Prints "customer load error" only
+//	fmt.Printf("%+v", err) // Prints the full error chain, including stack traces of the wrapper & wrapped errors
 //
 // # Multierrors
 //
@@ -160,7 +149,7 @@
 //
 // To solve this the package provides a type errors.MultiError that
 // wraps a slice of errors and implements the error interface (and
-// others: errors.As, errors.Is, fmt.Formatter, et al).
+// others: errors.As, errors.Is, fmt.Formatter, etc.)
 //
 // It also provides helper functions for writing code that handles
 // multierrors either as their own type or as a basic error type. For
@@ -181,30 +170,8 @@
 //
 // The additional types of context this package's wrappers add: call
 // frames or stack (for debugging) can most easily be extracted from an
-// error or error chain using errors.FramesFrom and errors.ErrorsFrom.
-//
-// errors.FramesFrom returns an errors.Frames slice. It identifies if
-// the error chain has a stack trace, and if it does it will return the
-// oldest / deepest one available (to get the most context). If the
-// error chain does not have a stack trace, but has frames appended,
-// errors.FramesFrom merges those frames in order from most recent to
-// oldest and returns it.
-//
-//	err := errors.NewWithStackTrace("err")
-//	frames := errors.FramesFrom(err)
-//	len(frames)
-//	// 6
-//
-//	err := errors.NewWithFrame("err")
-//	err = errors.WithFrame(err)
-//	frames := errors.FramesFrom(err)
-//	len(frames)
-//	// 2
-//
-//	err := errors.New("err")
-//	frames := errors.FramesFrom(err)
-//	len(frames)
-//	// 0
+// error or error chain using the errors.ErrorsFrom function, and via
+// one of the StackTracer, Framer, ChainStackTracer, ChainFramer interfaces.
 //
 // errors.ErrorsFrom returns a slice of errors, unwrapping the first
 // multierror found in an error chain and returning the results. If none
@@ -212,10 +179,9 @@
 // the error is nil:
 //
 //	merr := errors.NewMultiError(errors.New("err"), errors.New("err"))
-//	err := errors.WithStackTrace(merr)
+//	err := errors.New("wrapper: %w", merr)
 //	errs := errors.ErrorsFrom(err)
-//	len(errs)
-//	// 2
+//	len(errs) // 2
 //
 // # Masking Errors
 //
@@ -225,36 +191,37 @@
 // provide primitives for removing (or "masking") context in an error
 // chain.
 //
-// Foremost is the wrapper function errors.WithMessage, which will reset
-// a message context (often including information that is logged or that
-// will be provided to an end user), while leaving the rest of the
-// context and type information available on the error chain to be used
-// by calling code. For example:
+// The simplest way is to wrap the context error with another error, but
+// not to use the "%w" verb in the message, thus wrapping the context error,
+// but not including its message in the resulting (wrapping) error, like so:
 //
-//	err := errors.NewWithFrame("user 4356789 missing role Admin: has roles [EndUser] in tenant 42")
+//	root := errors.New("user 4356789 missing role Admin: has roles [EndUser] in tenant 42")
 //	// ...
-//	err = errors.WithMessage(err, "user unauthorized")
+//	err := errors.New("user unauthorized", root)
+//	fmt.Printf("%v", err) // prints "user unauthorized"
 //	fmt.Printf("%+v", err)
 //	//> user unauthorized
-//	//> pkg/function.name
-//	//>     file_name.go:20
+//	//> ...<full-chain-stack-trace-printed-here>...
 //
 // The resulting error can be unwrapped:
 //
-//	err := errors.Unwrap(err)
-//	fmt.Print(err.Error())
-//	//> user 4356789 missing role Admin: has roles [EndUser] in tenant 42
+//	unwrapped := errors.Unwrap(err)
+//	fmt.Print(unwrapped == root) // prints "true"
+//	fmt.Print(unwrapped) // prints "user 4356789 missing role Admin: has roles [EndUser] in tenant 42"
 //
 // The opposite effect can be had by using errors.Mask to remove all
 // non-message context:
 //
-//	err := errors.NewWithFrame("user unauthorized")
-//	// ...
-//	err = errors.Mask(err)
+//	err := errors.New("user unauthorized")
 //	fmt.Printf("%+v", err)
 //	//> user unauthorized
-//	errors.FramesFrom(err)
-//	// []
+//	//> ...<stack-trace-leading-to-this-err>...
+//	// ...
+//	masked := errors.Mask(err)
+//	fmt.Printf("%+v", masked) // prints "user unauthorized"
+//	fmt.Printf("%+v", masked)
+//	//> user unauthorized
+//	//> ...<stack-trace-leading-to-MASKED-err>...
 //
 // While errors.Mask removes all context, errors.Opaque retains all
 // context but squashes the error chain so that type information, or any
@@ -268,48 +235,9 @@
 // and can be formatted by the fmt package. The following verbs are
 // supported:
 //
-//	%s    print the error's message context. Frames are not included in
-//	      the message.
-//	%v    see %s
-//	%+v   extended format. Each Frame of the error's Frames will
-//	      be printed in detail.
-//
-// This not an exhaustive list, see the tests for more.
-//
-// # Unexported interfaces
-//
-// Following the precedent of other errors packages, this package is
-// implemented using a series of unexported structs that all conform to
-// various interfaces in order to be activated. All the error wrappers,
-// for example, implement the error interface face type and the unwrap
-// interface:
-//
-//	interface {
-//	    Error() string // The built-in language type "error."
-//	    Unwrap() error // The unexported standard library interface used to unwrap errors.
-//	}
-//
-// This package does export the important interface errors.Frame, but
-// otherwise it does not export interfaces that are not necessary to use
-// the library. However, if you want to write more complex code that
-// makes use of, or augments, this package, there are unexported
-// interfaces throughout that can be used to work more directly with its
-// types. These include:
-//
-//	interface {
-//	    // Used for extracting context.
-//	    Frames() errors.Frames // Ie "Framer," the interface for getting any frames from an error.
-//
-//	    // Used to distinguish a stack trace from other appended frames:
-//	    StackTrace() []uintptr // Ie "StackTracer," the interface for getting a local stack trace from an error.
-//
-//	    // Used to distinguish a frame that was generated from runtime (instead of synthetically):
-//	    PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.
-//
-//	    // Used to identify an error that coalesces multiple errors:
-//	    Errors() []error // Ie "multiError," the interface for getting multiple merged errors.
-//	}
-//
-// Though none of these are exported by this package, they are
-// considered a part of its stable public interface.
-package errors // "github.com/secureworks/errors"
+//	%s    print the error's message, but without the stack-trace
+//	%v    same as %s
+//	%q    same as %s but quoted
+//	%#v   prints the go-syntax representation of the error's message & causing error (if any)
+//	%+v   extended format. Prints the message & stack-trace for each error in the chain
+package errors

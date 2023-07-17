@@ -429,8 +429,7 @@ func AppendInto(receivingErr *error, appendingErr error) bool {
 		// because suggesting that the pointer must be non-nil may
 		// confuse users into thinking that the error that it points
 		// to must be non-nil.
-		panic(NewWithStackTrace(
-			"errors.AppendInto used incorrectly: receiving pointer must not be nil"))
+		panic(New("errors.AppendInto used incorrectly: receiving pointer must not be nil"))
 	case isNil(appendingErr):
 		*receivingErr = NewMultiError(*receivingErr).ErrorOrNil()
 		return false

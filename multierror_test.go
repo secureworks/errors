@@ -14,7 +14,6 @@ var (
 	errBasic        = errors.New("new err")
 	errSentinel     = errors.New("sentinel err")
 	errWrapSentinel = fmt.Errorf("wrap: %w", errSentinel)
-	errWithFrames   = errors.NewWithStackTrace("stack trace err")
 	errMultiWrap    = fmt.Errorf("wrap 2: %w", fmt.Errorf("wrap 1: %w", errors.New("err")))
 	errWrappedMulti = fmt.Errorf("wrap: %w", &multiErrorType{msg: "err", errs: []error{errBasic, errBasic}})
 )
@@ -140,7 +139,7 @@ func TestMultiError(t *testing.T) {
 					msg: "err",
 					errs: []error{
 						cerr,
-						errWithFrames,
+						errWrapSentinel,
 						errSentinel,
 						errBasic,
 					},
@@ -154,13 +153,13 @@ func TestMultiError(t *testing.T) {
 		testutils.AssertEqual(t, "customErr", reflect.TypeOf(errs[0]).Name())
 
 		// Type names for pointer types.
-		testutils.AssertEqual(t, "withStackTrace", reflect.TypeOf(errs[1]).Elem().Name())
-		testutils.AssertEqual(t, "errorString", reflect.TypeOf(errs[2]).Elem().Name())
-		testutils.AssertEqual(t, "errorString", reflect.TypeOf(errs[3]).Elem().Name())
+		testutils.AssertEqual(t, "wrapError", reflect.TypeOf(errs[1]).Elem().Name())
+		testutils.AssertEqual(t, "errorImpl", reflect.TypeOf(errs[2]).Elem().Name())
+		testutils.AssertEqual(t, "errorImpl", reflect.TypeOf(errs[3]).Elem().Name())
 
 		// Implements.
-		testutils.AssertTrue(t, reflect.TypeOf(errs[1]).Implements(stackFramer))
-		testutils.AssertTrue(t, reflect.TypeOf(errs[1]).Implements(stackTracer))
+		testutils.AssertTrue(t, reflect.TypeOf(errs[2]).Implements(stackFramer))
+		testutils.AssertTrue(t, reflect.TypeOf(errs[3]).Implements(stackTracer))
 		testutils.AssertTrue(t, reflect.TypeOf(errs[3]).Implements(reflect.TypeOf((*interface {
 			error
 		})(nil)).Elem()))
@@ -242,7 +241,7 @@ func TestMultiErrorErrorOrNil(t *testing.T) {
 func TestMultiErrorUnwrap(t *testing.T) {
 	t.Run("returns nil", func(t *testing.T) {
 		merr := errors.NewMultiError(
-			errWithFrames,
+			errBasic,
 			errMultiWrap,
 		)
 		testutils.AssertNil(t, errors.Unwrap(merr))
@@ -316,22 +315,22 @@ func TestMultiErrorIs(t *testing.T) {
 func TestMultiErrorFormat(t *testing.T) {
 	t.Run("message context", func(t *testing.T) {
 		merr := errors.NewMultiError(
-			errWithFrames,
+			errBasic,
 			errMultiWrap,
 		)
-		testutils.AssertEqual(t, "[stack trace err; wrap 2: wrap 1: err]", merr.Error())
+		testutils.AssertEqual(t, "[new err; wrap 2: wrap 1: err]", merr.Error())
 
 		// Order matters.
 		merr = errors.NewMultiError(
 			errMultiWrap,
-			errWithFrames,
+			errBasic,
 		)
-		testutils.AssertEqual(t, "[wrap 2: wrap 1: err; stack trace err]", merr.Error())
+		testutils.AssertEqual(t, "[wrap 2: wrap 1: err; new err]", merr.Error())
 	})
 
 	t.Run("formatted output", func(t *testing.T) {
 		merr := errors.NewMultiError(
-			errWithFrames,
+			errBasic,
 			errMultiWrap,
 		)
 
@@ -343,22 +342,22 @@ func TestMultiErrorFormat(t *testing.T) {
 			{
 				format: "%s",
 				error:  merr,
-				expect: `^\[stack trace err; wrap 2: wrap 1: err\]$`,
+				expect: `^\[new err; wrap 2: wrap 1: err\]$`,
 			},
 			{
 				format: "%q",
 				error:  merr,
-				expect: `^"\[stack trace err; wrap 2: wrap 1: err\]"$`,
+				expect: `^"\[new err; wrap 2: wrap 1: err\]"$`,
 			},
 			{
 				format: "%v",
 				error:  merr,
-				expect: `^\[stack trace err; wrap 2: wrap 1: err\]$`,
+				expect: `^\[new err; wrap 2: wrap 1: err\]$`,
 			},
 			{
 				format: "%#v",
 				error:  merr,
-				expect: `^\*errors.MultiError\{stack trace err; wrap 2: wrap 1: err\}$`,
+				expect: `^\*errors.MultiError\{new err; wrap 2: wrap 1: err\}$`,
 			},
 			{
 				format: "%d",
@@ -370,7 +369,7 @@ func TestMultiErrorFormat(t *testing.T) {
 				error:  merr,
 				expect: `multiple errors:
 
-\* error 1 of 2: stack trace err
+\* error 1 of 2: new err
 github\.com/secureworks/errors_test\.init
 	.+/multierror_test.go:\d+
 runtime\.doInit
