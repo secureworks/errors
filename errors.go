@@ -19,6 +19,10 @@ import (
 	"regexp"
 )
 
+type Unwrapper interface {
+	Unwrap() error
+}
+
 // Stack trace error wrapper.
 
 // withStackTrace implements an error type annotated with a list of
@@ -30,9 +34,9 @@ type withStackTrace struct {
 
 var _ interface { // Assert interface implementation.
 	error
-	stackTracer
-	framer
-	Unwrap() error
+	StackTracer
+	Framer
+	Unwrapper
 	fmt.Formatter
 } = (*withStackTrace)(nil)
 

@@ -405,14 +405,20 @@ func FramesFromJSON(byt []byte) (Frames, error) {
 	return ff, nil
 }
 
-// framer defines an interface for accessing Frames, which can
+// Framer defines an interface for accessing Frames, which can
 // represent a stack trace or a subset of a stack trace. This is the
 // preferred method for getting stack information in this package.
-type framer interface {
+type Framer interface {
 	Frames() Frames
 }
 
-// stackTracer defines an interface for accessing a slice of `uintptr`s,
+// ChainFramer defines an interface for accessing all frames from an entire
+// error chain.
+type ChainFramer interface {
+	ChainFrames() []Frames
+}
+
+// StackTracer defines an interface for accessing a slice of `uintptr`s,
 // which can be trivially converted to a
 // `github.com/pkg/errors.StackTrace` (and will be completely
 // interchangeable once we use Go 1.18 Generics), but also works where
@@ -420,17 +426,23 @@ type framer interface {
 // item types are assignable to one another.
 //
 // See: https://github.com/getsentry/sentry-go/blob/v0.12.0/stacktrace.go#L81
-type stackTracer interface {
+type StackTracer interface {
 	StackTrace() []uintptr
 }
 
+// ChainStackTracer defines an interface for accessing stack traces of a complete
+// error chain.
+type ChainStackTracer interface {
+	ChainStackTrace() [][]uintptr
+}
+
 // frames stores a slice of frame structs and implements both the
-// StackFrames and stackTracer interfaces.
+// StackFrames and StackTracer interfaces.
 type frames []*frame
 
 var _ interface { // Assert interface implementation.
-	stackTracer
-	framer
+	StackTracer
+	Framer
 	json.Marshaler
 } = (frames)(nil)
 
@@ -448,7 +460,7 @@ func (ff frames) Frames() Frames {
 	return st
 }
 
-// StackTrace implements the stackTracer interface, returning a slice of
+// StackTrace implements the StackTracer interface, returning a slice of
 // program counters.
 func (ff frames) StackTrace() []uintptr {
 	st := make([]uintptr, len(ff))

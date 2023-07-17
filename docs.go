@@ -298,10 +298,10 @@
 //
 //	interface {
 //	    // Used for extracting context.
-//	    Frames() errors.Frames // Ie "framer," the interface for getting any frames from an error.
+//	    Frames() errors.Frames // Ie "Framer," the interface for getting any frames from an error.
 //
 //	    // Used to distinguish a stack trace from other appended frames:
-//	    StackTrace() []uintptr // Ie "stackTracer," the interface for getting a local stack trace from an error.
+//	    StackTrace() []uintptr // Ie "StackTracer," the interface for getting a local stack trace from an error.
 //
 //	    // Used to distinguish a frame that was generated from runtime (instead of synthetically):
 //	    PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.

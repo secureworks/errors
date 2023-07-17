@@ -52,7 +52,7 @@ type multiError interface {
 var _ interface { // Assert interface implementation.
 	error
 	multiError
-	Unwrap() error
+	Unwrapper
 	As(interface{}) bool
 	Is(error) bool
 	fmt.Formatter
