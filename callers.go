@@ -41,8 +41,7 @@ func CallStackAt(skipCallers int) Frames {
 // (if the entire stack is less than maxFrames, the entireStack is
 // returned). maxFrames of zero or fewer is ignored:
 //
-//     CallStackAtMost(0, 0) // ... returns the entire stack for the caller
-//
+//	CallStackAtMost(0, 0) // ... returns the entire stack for the caller
 func CallStackAtMost(skipCallers int, maxFrames int) Frames {
 	st := getStack(skipCallers + 3)
 	stackLen := len(st)
