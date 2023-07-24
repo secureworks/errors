@@ -10,16 +10,16 @@
 //
 // All tasks have the signature:
 //
-//     type task func() error
+//	type task func() error
 //
 // All groups share the interface:
 //
-//     type taskGroup interface {
-//         Go(func() error, ...string)
-//         Wait() error
-//     }
+//	type taskGroup interface {
+//	    Go(func() error, ...string)
+//	    Wait() error
+//	}
 //
-// CoordinatedGroup
+// # CoordinatedGroup
 //
 // If you want the tasks to run until at least one task returns an
 // error, and receive the first error as the outcome, use
@@ -29,37 +29,36 @@
 // > In fact, the taskGroup interface is implemented by
 // > "golang.org/x/sync/errgroup".
 //
-//     group, ctx := errors.NewCoordinatedGroup(ctx)
-//     group.Go(taskRunner, "task", "1")
-//     // ...
-//     if err := group.Wait(); err != nil {
-//         // ...
-//     }
+//	group, ctx := errors.NewCoordinatedGroup(ctx)
+//	group.Go(taskRunner, "task", "1")
+//	// ...
+//	if err := group.Wait(); err != nil {
+//	    // ...
+//	}
 //
 // The more terse, default version of the task runner returns a
 // CoordinatedGroup:
 //
-//     group, ctx := errors.NewGroup(ctx) // Same as errors.NewCoordinatedGroup.
+//	group, ctx := errors.NewGroup(ctx) // Same as errors.NewCoordinatedGroup.
 //
-// ParallelGroup
+// # ParallelGroup
 //
 // If you want all tasks to run to completion and have their errors
 // coalesced, use ParallelGroup:
 //
-//     group := new(errors.ParallelGroup)
-//     group.Go(taskRunner, "task", "1")
-//     // ...
-//     err := group.Wait()
-//     merr, _ := err.(*errors.MultiError)
-//     fmt.Println(merr.Errors())
+//	group := new(errors.ParallelGroup)
+//	group.Go(taskRunner, "task", "1")
+//	// ...
+//	err := group.Wait()
+//	merr, _ := err.(*errors.MultiError)
+//	fmt.Println(merr.Errors())
 //
 // ParallelGroup includes the function WaitForMultiError that skips the
 // step of asserting the multierror interface on the result:
 //
-//     group := new(errors.ParallelGroup)
-//     group.Go(taskRunner, "task", "1")
-//     // ...
-//     merr := group.WaitForMultiError()
-//     fmt.Println(merr.Errors())
-//
+//	group := new(errors.ParallelGroup)
+//	group.Go(taskRunner, "task", "1")
+//	// ...
+//	merr := group.WaitForMultiError()
+//	fmt.Println(merr.Errors())
 package syncerr // "github.com/secureworks/errors/syncerr"
