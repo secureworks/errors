@@ -139,8 +139,14 @@ func (f *frame) Format(s fmt.State, verb rune) {
 	case 'v':
 		switch {
 		case s.Flag('+'):
+			prefix := ""
+			width, ok := s.Width()
+			if ok {
+				prefix = strings.Repeat(" ", width)
+			}
+			io.WriteString(s, prefix)
 			io.WriteString(s, escaper.Replace(function))
-			io.WriteString(s, "\n\t")
+			io.WriteString(s, "\n"+prefix+"\t")
 			io.WriteString(s, escaper.Replace(file))
 			io.WriteString(s, ":")
 			io.WriteString(s, strconv.Itoa(line))
