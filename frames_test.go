@@ -1,4 +1,4 @@
-package errors_test
+package errors
 
 import (
 	"encoding/json"
@@ -6,28 +6,27 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/secureworks/errors"
 	"github.com/secureworks/errors/internal/runtime"
 	"github.com/secureworks/errors/internal/testutils"
 )
 
 // Callers to build up a call stack in tests.
 
-type FrameCallerStruct struct{}
+type frameCallerStruct struct{}
 
 //go:noinline
-func (cs FrameCallerStruct) ValFrameCaller() errors.Frame {
-	return getFrame()
+func (cs frameCallerStruct) ValFrameCaller() Frame {
+	return testGetFrame()
 }
 
 //go:noinline
-func (cs *FrameCallerStruct) PtrFrameCaller() errors.Frame {
-	return getFrame()
+func (cs *frameCallerStruct) PtrFrameCaller() Frame {
+	return testGetFrame()
 }
 
 //go:noinline
-func StackCaller() []errors.Frame {
-	return getStack()
+func stackCaller() []Frame {
+	return testGetStack()
 }
 
 // Unexported interfaces.
@@ -37,17 +36,32 @@ type pcer interface{ PC() uintptr }
 // Default values.
 
 var (
-	rtimeFrame = getFrame()
-	synthFrame = errors.NewFrame(
+	rtimeFrame = testGetFrame()
+	synthFrame = NewFrame(
 		`github.com/secureworks/errors_test.(*ExampleStruct).MethodName.func1`,
 		"/usr/u/src/github.com/secureworks/e/errors_example_test.go",
 		44,
 	)
-	emptyFrame = errors.FrameFromPC(0)
-	rtimeStack = StackCaller()
+	emptyFrame = FrameFromPC(0)
+	rtimeStack = stackCaller()
 
 	rtimeFramePC = rtimeFrame.(pcer).PC()
 )
+
+//go:noinline
+func testGetStack() Frames {
+	st := runtime.GetStack(2) // Skip runtime.GetStack.
+	ff := make([]Frame, len(st))
+	for i, fr := range st {
+		ff[i] = FrameFromPC(fr.PC)
+	}
+	return ff
+}
+
+//go:noinline
+func testGetFrame() Frame {
+	return FrameFromPC(runtime.GetFrame(2).PC) // Skip runtime.GetFrame and errors_test.getFrame.
+}
 
 func TestFrame(t *testing.T) {
 	var function, file string
@@ -57,7 +71,7 @@ func TestFrame(t *testing.T) {
 		function, file, line = rtimeFrame.Location()
 		testutils.AssertMatch(t, ".+init", function)
 		testutils.AssertMatch(t, ".+frames_test.go", file)
-		testutils.AssertEqual(t, 40, line)
+		testutils.AssertEqual(t, 39, line)
 
 		rtimePCer, ok := rtimeFrame.(pcer)
 		testutils.AssertTrue(t, ok)
@@ -79,50 +93,50 @@ func TestFrame(t *testing.T) {
 func TestFrameFormat(t *testing.T) {
 	var cases = []struct {
 		name   string
-		pc     errors.Frame
+		pc     Frame
 		format string
 		expect string
 	}{
 		{"empty %s", emptyFrame, "%s", `^unknown$`},
-		{"rtime %s", rtimeFrame, "%s", `^frames_test.go:40$`},
+		{"rtime %s", rtimeFrame, "%s", `^frames_test.go:39$`},
 		{"synth %s", synthFrame, "%s", `^errors_example_test.go:44$`},
 		{"empty %q", emptyFrame, "%q", `^"unknown"$`},
-		{"rtime %q", rtimeFrame, "%q", `^"frames_test.go:40"$`},
+		{"rtime %q", rtimeFrame, "%q", `^"frames_test.go:39"$`},
 		{"synth %q", synthFrame, "%q", `^"errors_example_test.go:44"$`},
 		{"empty %d", emptyFrame, "%d", `0`},
-		{"rtime %d", rtimeFrame, "%d", `40`},
+		{"rtime %d", rtimeFrame, "%d", `39`},
 		{"synth %d", synthFrame, "%d", `44`},
 		{"empty %n", emptyFrame, "%n", `unknown$`},
 		{"rtime %n", rtimeFrame, "%n", `^init$`},
 		{"synth %n", synthFrame, "%n", `^\(\*ExampleStruct\)\.MethodName\.func1$`},
 		{
 			"ptr method %n",
-			func() errors.Frame {
-				var cs *FrameCallerStruct
+			func() Frame {
+				var cs *frameCallerStruct
 				return cs.PtrFrameCaller()
 			}(),
 			"%n",
-			`\(\*FrameCallerStruct\)\.PtrFrameCaller`,
+			`\(\*frameCallerStruct\)\.PtrFrameCaller`,
 		},
 		{
 			"val method %n",
-			func() errors.Frame {
-				var cs FrameCallerStruct
+			func() Frame {
+				var cs frameCallerStruct
 				return cs.ValFrameCaller()
 			}(),
 			"%n",
-			`FrameCallerStruct\.ValFrameCaller`,
+			`frameCallerStruct\.ValFrameCaller`,
 		},
 		{"empty %v", emptyFrame, "%v", `^unknown$`},
-		{"rtime %v", rtimeFrame, "%v", `.+/frames_test.go:40$`},
+		{"rtime %v", rtimeFrame, "%v", `.+/frames_test.go:39$`},
 		{"synth %v", synthFrame, "%v", `^/usr/u/src/github\.com/secureworks/e/errors_example_test.go:44$`},
 		{"empty %+v", emptyFrame, "%+v", `^unknown\n\tunknown:0$`},
 		{
 			"rtime %+v",
 			rtimeFrame,
 			"%+v",
-			`^github\.com/secureworks/errors_test\.init\n\t` +
-				`.+/frames_test\.go:40$`,
+			`^github\.com/secureworks/errors\.init\n\t` +
+				`.+/frames_test\.go:39$`,
 		},
 		{
 			"synth %+v",
@@ -141,7 +155,7 @@ func TestFrameFormat(t *testing.T) {
 			"rtime %#v",
 			rtimeFrame,
 			"%#v",
-			`^errors.Frame\(".+/frames_test\.go:40"\)$`,
+			`^errors.Frame\(".+/frames_test\.go:39"\)$`,
 		},
 		{
 			"synth %#v",
@@ -160,15 +174,15 @@ func TestFrameFormat(t *testing.T) {
 func TestFrameMarshalJSON(t *testing.T) {
 	var cases = []struct {
 		name string
-		errors.Frame
+		Frame
 		expectJSONObject map[string]string
 	}{{
 		"runtime",
 		rtimeFrame,
 		map[string]string{
-			"function": `^github\.com/secureworks/errors_test\.init$`,
+			"function": `^github\.com/secureworks/errors\.init$`,
 			"file":     `^.+/frames_test.go$`,
-			"line":     `^40$`,
+			"line":     `^39$`,
 		},
 	}, {
 		"synthetic",
@@ -180,7 +194,7 @@ func TestFrameMarshalJSON(t *testing.T) {
 		},
 	}, {
 		"partial",
-		errors.NewFrame("runtime.doInit", "", 0),
+		NewFrame("runtime.doInit", "", 0),
 		map[string]string{
 			"function": `^runtime\.doInit$`,
 			"file":     `^unknown$`,
@@ -188,7 +202,7 @@ func TestFrameMarshalJSON(t *testing.T) {
 		},
 	}, {
 		"empty",
-		errors.FrameFromPC(0),
+		FrameFromPC(0),
 		map[string]string{
 			"function": `^unknown$`,
 			"file":     `^unknown$`,
@@ -220,75 +234,75 @@ func TestFrameMarshalJSON(t *testing.T) {
 
 func TestPCFromFrame(t *testing.T) {
 	testutils.AssertTrue(t, rtimeFramePC > 0)
-	testutils.AssertEqual(t, rtimeFramePC, errors.PCFromFrame(rtimeFrame))
+	testutils.AssertEqual(t, rtimeFramePC, PCFromFrame(rtimeFrame))
 
 	// Get a frame from the std lib runtime.
 	fr := runtime.GetFrame(1)
 	testutils.AssertTrue(t, fr.PC > 0)
-	testutils.AssertEqual(t, fr.PC, errors.PCFromFrame(fr))
+	testutils.AssertEqual(t, fr.PC, PCFromFrame(fr))
 
 	// PC identity.
 	pfr := uintptr(1789100)
-	testutils.AssertEqual(t, pfr, errors.PCFromFrame(pfr))
+	testutils.AssertEqual(t, pfr, PCFromFrame(pfr))
 }
 
 func TestFramesFormat(t *testing.T) {
 	var cases = []struct {
 		name string
-		errors.Frames
+		Frames
 		format string
 		match  string
 	}{
 		{"empty %s", nil, "%s", `\[\]`},
-		{"zero %s", make(errors.Frames, 0), "%s", `\[\]`},
+		{"zero %s", make(Frames, 0), "%s", `\[\]`},
 		{
 			"default %s",
 			rtimeStack,
 			"%s",
-			`^\[frames_test\.go:30 frames_test\.go:47 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+\]$`, // FIXME
+			`^\[frames_test\.go:29 frames_test\.go:46 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+\]$`, // FIXME
 		},
 
 		{"empty %+s", nil, "%+s", `\[\]`},
-		{"zero %+s", make(errors.Frames, 0), "%+s", `\[\]`},
+		{"zero %+s", make(Frames, 0), "%+s", `\[\]`},
 		{
 			"default %+s",
 			rtimeStack,
 			"%+s",
-			`^\[frames_test\.go:30 frames_test\.go:47 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+\]$`,
+			`^\[frames_test\.go:29 frames_test\.go:46 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+\]$`,
 		},
 
 		{"empty %n", nil, "%n", `\[\]`},
-		{"zero %n", make(errors.Frames, 0), "%n", `\[\]`},
+		{"zero %n", make(Frames, 0), "%n", `\[\]`},
 		{
 			"default %n",
 			rtimeStack,
 			"%n",
-			`^\[StackCaller init doInit doInit main\]$`,
+			`^\[stackCaller init doInit1 doInit main\]$`,
 		},
 
 		{"empty %v", nil, "%v", `\[\]`},
-		{"zero %v", make(errors.Frames, 0), "%v", `\[\]`},
+		{"zero %v", make(Frames, 0), "%v", `\[\]`},
 		{
 			"default %v",
 			rtimeStack,
 			"%v",
-			`^\[.+/frames_test\.go:30 ` +
-				`.+/frames_test\.go:47 ` +
+			`^\[.+/frames_test\.go:29 ` +
+				`.+/frames_test\.go:46 ` +
 				`.+src/runtime/proc\.go:\d+ .+src/runtime/proc\.go:\d+ .+src/runtime/proc\.go:\d+\]$`,
 		},
 
 		{"empty %+v", nil, "%+v", ``},
-		{"zero %+v", make(errors.Frames, 0), "%+v", ``},
+		{"zero %+v", make(Frames, 0), "%+v", ``},
 		{
 			"default %+v",
 			rtimeStack,
 			"%+v",
 			`^
-github\.com/secureworks/errors_test.StackCaller
-	.+/frames_test.go:30
-github\.com/secureworks/errors_test.init
-	.+/frames_test.go:47
-runtime\.doInit
+github\.com/secureworks/errors.stackCaller
+	.+/frames_test.go:29
+github\.com/secureworks/errors.init
+	.+/frames_test.go:46
+runtime\.doInit1
 	.+/runtime/proc.go:\d+
 runtime\.doInit
 	.+/runtime/proc.go:\d+
@@ -297,12 +311,12 @@ runtime\.main
 		},
 
 		{"empty %#v", nil, "%#v", `errors\.Frames\{\}`},
-		{"zero %#v", make(errors.Frames, 0), "%#v", `errors\.Frames\{\}`},
+		{"zero %#v", make(Frames, 0), "%#v", `errors\.Frames\{\}`},
 		{
 			"default %#v",
 			rtimeStack,
 			"%#v",
-			`^errors.Frames{frames_test\.go:30 frames_test\.go:47 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+}$`,
+			`^errors.Frames{frames_test\.go:29 frames_test\.go:46 proc\.go:\d+ proc\.go:\d+ proc\.go:\d+}$`,
 		},
 	}
 	for _, tt := range cases {
@@ -313,8 +327,8 @@ runtime\.main
 }
 
 func TestFramesMarshalJSON(t *testing.T) {
-	partialFrame := errors.NewFrame("runtime.doInit", "", 0)
-	frames := errors.Frames{rtimeFrame, errors.FrameFromPC(0), synthFrame, partialFrame}
+	partialFrame := NewFrame("runtime.doInit", "", 0)
+	frames := Frames{rtimeFrame, FrameFromPC(0), synthFrame, partialFrame}
 
 	byt, err := json.Marshal(frames)
 	testutils.AssertNil(t, err)
@@ -333,11 +347,11 @@ func TestFramesMarshalJSON(t *testing.T) {
 	}
 
 	t.Run("when empty", func(t *testing.T) {
-		byt, err := json.Marshal((errors.Frames)(nil))
+		byt, err := json.Marshal((Frames)(nil))
 		testutils.AssertNil(t, err)
 		testutils.AssertEqual(t, "null", string(byt))
 
-		byt, err = json.Marshal(errors.Frames{})
+		byt, err = json.Marshal(Frames{})
 		testutils.AssertNil(t, err)
 		testutils.AssertEqual(t, "null", string(byt))
 	})
@@ -387,7 +401,7 @@ github.com/secureworks/errors/errors_test.init
 	/usr/u/src/github.com/secureworks/e/errors_example_test.go:7
 runtime.doInit
 	unknown:0`) + "\n")
-		frames, err := errors.FramesFromBytes(trace)
+		frames, err := FramesFromBytes(trace)
 		testutils.AssertNil(t, err)
 
 		testutils.AssertEqual(t, 5, len(frames))
@@ -414,7 +428,7 @@ runtime.doInit
 	unknown:0
 
         `)
-		frames, err := errors.FramesFromBytes(trace)
+		frames, err := FramesFromBytes(trace)
 		testutils.AssertNil(t, err)
 
 		testutils.AssertEqual(t, 5, len(frames))
@@ -448,19 +462,19 @@ func TestFramesFromJSON(t *testing.T) {
 		"function":"github.com/secureworks/errors/errors_test.(*ExampleStruct).MethodName.func1"
 	}
 ]`)
-	fr0 := errors.NewFrame(
+	fr0 := NewFrame(
 		"github.com/secureworks/errors/errors_test.init",
 		"/Users/uname/code/github.com/secureworks/errors/frames_test.go",
 		44,
 	)
-	fr1 := errors.NewFrame("", "", 0)
-	fr2 := errors.NewFrame("", "", 0)
-	fr3 := errors.NewFrame(
+	fr1 := NewFrame("", "", 0)
+	fr2 := NewFrame("", "", 0)
+	fr3 := NewFrame(
 		"", "/usr/u/src/github.com/secureworks/e/errors_example_test.go", 48)
-	fr4 := errors.NewFrame(
+	fr4 := NewFrame(
 		"github.com/secureworks/errors/errors_test.(*ExampleStruct).MethodName.func1", "", 0)
 
-	parsed, err := errors.FramesFromJSON(byt)
+	parsed, err := FramesFromJSON(byt)
 	testutils.AssertNil(t, err)
 
 	// Test each entry.
@@ -472,7 +486,7 @@ func TestFramesFromJSON(t *testing.T) {
 	testutils.AssertEqual(t, fmt.Sprintf("%+v", fr4), fmt.Sprintf("%+v", parsed[4]))
 
 	t.Run("when null", func(t *testing.T) {
-		ff, err := errors.FramesFromJSON([]byte("null"))
+		ff, err := FramesFromJSON([]byte("null"))
 		testutils.AssertNil(t, err)
 		testutils.AssertEqual(t, 0, len(ff))
 	})
@@ -482,7 +496,7 @@ func TestFrameEscapes(t *testing.T) {
 	// Use big characters in there to ensure we are rune-aware.
 	frFunction := "example.com/_\" Poorly\tNamed\"/可口可乐/path to a\n\npackage\\name/pkg.(欢迎地图).Funčtįøñ"
 	frFile := "/Example /_\" Poorly\tNamed\"/path\t\"to\"\\ a\n\n文件.exe"
-	fr := errors.NewFrame(
+	fr := NewFrame(
 		frFunction,
 		frFile,
 		10,
@@ -504,13 +518,13 @@ func TestFrameEscapes(t *testing.T) {
 	})
 
 	t.Run("marshal and unmarshal JSON", func(t *testing.T) {
-		byt, err := errors.Frames([]errors.Frame{fr}).MarshalJSON()
+		byt, err := Frames([]Frame{fr}).MarshalJSON()
 		testutils.AssertNil(t, err)
 		testutils.AssertEqual(t,
 			`[{"function":"example.com/_\\\" Poorly\\tNamed\\\"/可口可乐/path to a\\n\\npackage\\\\name/pkg.(欢迎地图).Funčtįøñ","file":"/Example /_\\\" Poorly\\tNamed\\\"/path\\t\\\"to\\\"\\\\ a\\n\\n文件.exe","line":10}]`,
 			string(byt))
 
-		ff, err := errors.FramesFromJSON(byt)
+		ff, err := FramesFromJSON(byt)
 		testutils.AssertNil(t, err)
 		testutils.AssertEqual(t, 1, len(ff))
 
@@ -519,23 +533,4 @@ func TestFrameEscapes(t *testing.T) {
 		testutils.AssertEqual(t, frFile, file)
 		testutils.AssertEqual(t, 10, line)
 	})
-}
-
-// These helpers are copies of the internal getStack and getFrame: do
-// not want to export these, they are dead simple, and we want to run
-// tests in an isolated package.
-
-//go:noinline
-func getStack() errors.Frames {
-	st := runtime.GetStack(2) // Skip runtime.GetStack.
-	ff := make([]errors.Frame, len(st))
-	for i, fr := range st {
-		ff[i] = errors.FrameFromPC(fr.PC)
-	}
-	return ff
-}
-
-//go:noinline
-func getFrame() errors.Frame {
-	return errors.FrameFromPC(runtime.GetFrame(2).PC) // Skip runtime.GetFrame and errors_test.getFrame.
 }
