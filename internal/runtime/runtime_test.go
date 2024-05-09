@@ -1,32 +1,31 @@
-package runtime_test
+package runtime
 
 import (
 	"fmt"
-	stdruntime "runtime"
+	"runtime"
 	"testing"
 
-	"github.com/secureworks/errors/internal/runtime"
 	"github.com/secureworks/errors/internal/testutils"
 )
 
 // Callers to build up a call stack in tests.
 
-type CallerStruct struct{}
+type callerStruct struct{}
 
-func (c *CallerStruct) PtrFrameCaller(skip int) stdruntime.Frame {
+func (c callerStruct) PtrFrameCaller(skip int) runtime.Frame {
 	return FrameCaller(skip)
 }
 
-func (c *CallerStruct) PtrStackCaller(skip int) []stdruntime.Frame {
+func (c callerStruct) PtrStackCaller(skip int) []runtime.Frame {
 	return StackCaller(skip)
 }
 
-func FrameCaller(skip int) stdruntime.Frame {
-	return runtime.GetFrame(skip)
+func FrameCaller(skip int) runtime.Frame {
+	return GetFrame(skip)
 }
 
-func StackCaller(skip int) []stdruntime.Frame {
-	return runtime.GetStack(skip)
+func StackCaller(skip int) []runtime.Frame {
+	return GetStack(skip)
 }
 
 var (
@@ -35,10 +34,10 @@ var (
 )
 
 func TestGetFrame(t *testing.T) {
-	var cs *CallerStruct
+	var cs callerStruct
 	cases := []struct {
 		name  string
-		frame stdruntime.Frame
+		frame runtime.Frame
 		fn    string
 		file  string
 		line  int
@@ -53,23 +52,23 @@ func TestGetFrame(t *testing.T) {
 		{
 			name:  "skip:1",
 			frame: cs.PtrFrameCaller(1),
-			fn:    `.+\/runtime_test\.FrameCaller`,
+			fn:    `.+\/runtime\.FrameCaller`,
 			file:  `.+\/runtime_test\.go`,
-			line:  25,
+			line:  24,
 		},
 		{
 			name:  "skip:2",
 			frame: cs.PtrFrameCaller(2),
-			fn:    `.+\/runtime_test\.\(\*CallerStruct\)\.PtrFrameCaller`,
+			fn:    `.+\/runtime\.callerStruct\.PtrFrameCaller`,
 			file:  `.+\/runtime_test\.go`,
-			line:  17,
+			line:  16,
 		},
 		{
 			name:  "skip:3",
 			frame: cs.PtrFrameCaller(3),
-			fn:    `.+\/runtime_test\.TestGetFrame`,
+			fn:    `.+\/runtime\.TestGetFrame`,
 			file:  `.+\/runtime_test\.go`,
-			line:  69,
+			line:  68,
 		},
 		{
 			name:  "skip:4",
@@ -97,10 +96,10 @@ func TestGetFrame(t *testing.T) {
 }
 
 func TestGetStack(t *testing.T) {
-	var cs *CallerStruct
+	var cs callerStruct
 	stack := cs.PtrStackCaller(0)
 
-	frames := []struct {
+	cases := []struct {
 		fn   string
 		file string
 		line int
@@ -111,27 +110,27 @@ func TestGetStack(t *testing.T) {
 			line: getStackLine,
 		},
 		{
-			fn:   `.+\/runtime_test\.StackCaller`,
+			fn:   `.+\/runtime\.StackCaller`,
 			file: `.+\/runtime_test\.go`,
-			line: 29,
+			line: 28,
 		},
 		{
-			fn:   `.+\/runtime_test\.\(\*CallerStruct\)\.PtrStackCaller`,
+			fn:   `.+\/runtime\.callerStruct\.PtrStackCaller`,
 			file: `.+\/runtime_test\.go`,
-			line: 21,
+			line: 20,
 		},
 		{
-			fn:   `.+\/runtime_test\.TestGetStack`,
+			fn:   `.+\/runtime\.TestGetStack`,
 			file: `.+\/runtime_test\.go`,
-			line: 101,
+			line: 100,
 		},
 		{
 			fn:   `testing\.tRunner`,
 			file: `.+\/testing\/testing\.go`,
 		},
 	}
-	testutils.AssertEqual(t, len(frames), len(stack))
-	for i, fr := range frames {
+	testutils.AssertEqual(t, len(cases), len(stack))
+	for i, fr := range cases {
 		t.Run(fmt.Sprintf("call depth %d", i), func(t *testing.T) {
 			testutils.AssertMatch(t, fr.fn, stack[i].Function)
 			testutils.AssertMatch(t, fr.file, stack[i].File)
@@ -155,7 +154,7 @@ func TestFuncName(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			got := runtime.FuncName(tt.name)
+			got := FuncName(tt.name)
 			want := tt.want
 			if got != want {
 				t.Errorf("funcname(%q): want: %q, got %q", tt.name, want, got)
