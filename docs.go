@@ -13,7 +13,7 @@
 // When we write the following:
 //
 //	if err != nil {
-//	    return err
+//		return err
 //	}
 //
 // ... we allow errors to lose error context (ie human-readable root
@@ -23,7 +23,7 @@
 // messages like this:
 //
 //	if err != nil {
-//	    return fmt.Errorf("contextual information: %w", err)
+//		return fmt.Errorf("contextual information: %w", err)
 //	}
 //
 // This helps us identify a root causs and place that cause in some
@@ -77,7 +77,7 @@
 // method, Location:
 //
 //	type Frame interface {
-//	    Location() (function string, file string, line int)
+//		Location() (function string, file string, line int)
 //	}
 //
 // You can create a Frame in your code directly with errors.Caller or
@@ -168,13 +168,13 @@
 // multierror, you can use:
 //
 //	func actionWrapper() *errors.MultiError {
-//	    err1 := actionA()
-//	    err2 := actionB()
-//	    return errors.NewMultiError(err1, err2)
+//		err1 := actionA()
+//		err2 := actionB()
+//		return errors.NewMultiError(err1, err2)
 //	}
 //
 //	if merr := actionWrapper(); merr != nil {
-//	    fmt.Printf("%+v\n", merr.Errors())
+//		fmt.Printf("%+v\n", merr.Errors())
 //	}
 //
 // # Retrieving error information
@@ -285,8 +285,8 @@
 // interface:
 //
 //	interface {
-//	    Error() string // The built-in language type "error."
-//	    Unwrap() error // The unexported standard library interface used to unwrap errors.
+//		Error() string // The built-in language type "error."
+//		Unwrap() error // The unexported standard library interface used to unwrap errors.
 //	}
 //
 // This package does export the important interface errors.Frame, but
@@ -297,17 +297,17 @@
 // types. These include:
 //
 //	interface {
-//	    // Used for extracting context.
-//	    Frames() errors.Frames // Ie "framer," the interface for getting any frames from an error.
+//		// Used for extracting context.
+//		Frames() errors.Frames // Ie "framer," the interface for getting any frames from an error.
 //
-//	    // Used to distinguish a stack trace from other appended frames:
-//	    StackTrace() []uintptr // Ie "stackTracer," the interface for getting a local stack trace from an error.
+//		// Used to distinguish a stack trace from other appended frames:
+//		StackTrace() []uintptr // Ie "stackTracer," the interface for getting a local stack trace from an error.
 //
-//	    // Used to distinguish a frame that was generated from runtime (instead of synthetically):
-//	    PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.
+//		// Used to distinguish a frame that was generated from runtime (instead of synthetically):
+//		PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.
 //
-//	    // Used to identify an error that coalesces multiple errors:
-//	    Errors() []error // Ie "multiError," the interface for getting multiple merged errors.
+//		// Used to identify an error that coalesces multiple errors:
+//		Errors() []error // Ie "multiError," the interface for getting multiple merged errors.
 //	}
 //
 // Though none of these are exported by this package, they are

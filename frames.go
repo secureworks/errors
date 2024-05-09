@@ -413,9 +413,9 @@ var _ interface { // Assert interface implementation.
 } = (frames)(nil)
 
 // NOTE(PH): because we don't export the helper that generates frames
-//   from the call stack, the tests for generated stacks (as opposed to
-//   the Frames interface) are easier to run as part of the error test
-//   suite.
+// from the call stack, the tests for generated stacks (as opposed to
+// the Frames interface) are easier to run as part of the error test
+// suite.
 
 // Frames implements the StackFrames interface, returning Frames.
 func (ff frames) Frames() Frames {

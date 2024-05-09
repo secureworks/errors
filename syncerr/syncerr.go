@@ -65,7 +65,7 @@ func NewCoordinatedGroup(ctx context.Context) (group *CoordinatedGroup, innerCtx
 //
 //	group, _ := syncerr.NewCoordinatedGroup(ctx)
 //	group.Go(func() error {
-//	    return someTask(ctx)
+//		return someTask(ctx)
 //	}, "someTask", "1")
 //
 // Use this pattern for running tasks that need any number of
@@ -127,7 +127,7 @@ var _ taskGroup = (*ParallelGroup)(nil)
 //
 //	group := new(syncerr.ParallelGroup)
 //	group.Go(func() error {
-//	    return someTask(ctx)
+//		return someTask(ctx)
 //	}, "someTask", "1")
 //
 // Use this pattern for running tasks that need any number of
