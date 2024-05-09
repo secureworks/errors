@@ -1,4 +1,4 @@
-package errors_test
+package errors
 
 import (
 	stderrors "errors"
@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/secureworks/errors"
 	"github.com/secureworks/errors/internal/testutils"
 )
 
@@ -16,17 +15,8 @@ type customErr struct {
 
 func (c customErr) Error() string { return c.msg }
 
-var (
-	stackFramer = reflect.TypeOf((*interface {
-		Frames() errors.Frames
-	})(nil)).Elem()
-	stackTracer = reflect.TypeOf((*interface {
-		StackTrace() []uintptr
-	})(nil)).Elem()
-)
-
 func TestNew(t *testing.T) {
-	libErr := errors.New("new err")
+	libErr := New("new err")
 	stdErr := stderrors.New("new err")
 
 	testutils.AssertNotNil(t, libErr)
@@ -43,42 +33,42 @@ func TestNewWith(t *testing.T) {
 	}{
 		{
 			name: "Stack",
-			err:  errors.NewWithStackTrace("new err"),
+			err:  NewWithStackTrace("new err"),
 			wrap: true,
 			impl: []reflect.Type{
-				stackFramer,
-				stackTracer,
+				stackFramerIface,
+				stackTracerIface,
 			},
 		},
 		{
 			name: "Frame",
-			err:  errors.NewWithFrame("new err"),
+			err:  NewWithFrame("new err"),
 			wrap: true,
 			impl: []reflect.Type{
-				stackFramer,
+				stackFramerIface,
 			},
 		},
 		{
 			name: "FrameAt",
-			err:  errors.NewWithFrameAt("new err", 0),
+			err:  NewWithFrameAt("new err", 0),
 			wrap: true,
 			impl: []reflect.Type{
-				stackFramer,
+				stackFramerIface,
 			},
 		},
 		{
 			name: "Frames",
-			err:  errors.NewWithFrames("new err", errors.Frames{}),
+			err:  NewWithFrames("new err", Frames{}),
 			wrap: true,
 			impl: []reflect.Type{
-				stackFramer,
+				stackFramerIface,
 			},
 		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Unwraps.
-			baseErr := errors.Unwrap(tt.err)
+			baseErr := Unwrap(tt.err)
 			if tt.wrap {
 				testutils.AssertEqual(t, "new err", baseErr.Error())
 			} else {
@@ -94,7 +84,7 @@ func TestNewWith(t *testing.T) {
 }
 
 func TestUnwrap(t *testing.T) {
-	err := errors.New("new err")
+	err := New("new err")
 
 	type args struct {
 		err error
@@ -106,22 +96,22 @@ func TestUnwrap(t *testing.T) {
 	}{
 		{
 			name: "with stack",
-			args: args{err: errors.WithStackTrace(err)},
+			args: args{err: WithStackTrace(err)},
 			want: err,
 		},
 		{
 			name: "with frame",
-			args: args{err: errors.WithFrame(err)},
+			args: args{err: WithFrame(err)},
 			want: err,
 		},
 		{
 			name: "with frames",
-			args: args{err: errors.WithFrames(err, errors.Frames{})},
+			args: args{err: WithFrames(err, Frames{})},
 			want: err,
 		},
 		{
 			name: "with message",
-			args: args{err: errors.WithMessage(err, "replace err")},
+			args: args{err: WithMessage(err, "replace err")},
 			want: err,
 		},
 		{
@@ -137,13 +127,13 @@ func TestUnwrap(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.want, errors.Unwrap(tt.args.err))
+			testutils.AssertEqual(t, tt.want, Unwrap(tt.args.err))
 		})
 	}
 }
 
 func TestIs(t *testing.T) {
-	err := errors.New("new err")
+	err := New("new err")
 
 	type args struct {
 		err    error
@@ -157,7 +147,7 @@ func TestIs(t *testing.T) {
 		{
 			name: "with stack",
 			args: args{
-				err:    errors.WithStackTrace(err),
+				err:    WithStackTrace(err),
 				target: err,
 			},
 			want: true,
@@ -165,7 +155,7 @@ func TestIs(t *testing.T) {
 		{
 			name: "with frame",
 			args: args{
-				err:    errors.WithFrame(err),
+				err:    WithFrame(err),
 				target: err,
 			},
 			want: true,
@@ -173,7 +163,7 @@ func TestIs(t *testing.T) {
 		{
 			name: "with frames",
 			args: args{
-				err:    errors.WithFrames(err, errors.Frames{}),
+				err:    WithFrames(err, Frames{}),
 				target: err,
 			},
 			want: true,
@@ -181,7 +171,7 @@ func TestIs(t *testing.T) {
 		{
 			name: "with message",
 			args: args{
-				err:    errors.WithMessage(err, "replace err"),
+				err:    WithMessage(err, "replace err"),
 				target: err,
 			},
 			want: true,
@@ -205,7 +195,7 @@ func TestIs(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.want, errors.Is(tt.args.err, tt.args.target))
+			testutils.AssertEqual(t, tt.want, Is(tt.args.err, tt.args.target))
 		})
 	}
 }
@@ -225,7 +215,7 @@ func TestAs(t *testing.T) {
 		{
 			name: "with stack",
 			args: args{
-				err:    errors.WithStackTrace(err),
+				err:    WithStackTrace(err),
 				target: new(customErr),
 			},
 			want: true,
@@ -233,7 +223,7 @@ func TestAs(t *testing.T) {
 		{
 			name: "with frame",
 			args: args{
-				err:    errors.WithFrame(err),
+				err:    WithFrame(err),
 				target: new(customErr),
 			},
 			want: true,
@@ -241,7 +231,7 @@ func TestAs(t *testing.T) {
 		{
 			name: "with frame",
 			args: args{
-				err:    errors.WithFrames(err, errors.Frames{}),
+				err:    WithFrames(err, Frames{}),
 				target: new(customErr),
 			},
 			want: true,
@@ -249,7 +239,7 @@ func TestAs(t *testing.T) {
 		{
 			name: "with message",
 			args: args{
-				err:    errors.WithMessage(err, "replace err"),
+				err:    WithMessage(err, "replace err"),
 				target: new(customErr),
 			},
 			want: true,
@@ -273,7 +263,7 @@ func TestAs(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			matches := errors.As(tt.args.err, tt.args.target)
+			matches := As(tt.args.err, tt.args.target)
 			testutils.AssertEqual(t, tt.want, matches)
 
 			if matches {

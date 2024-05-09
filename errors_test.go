@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/secureworks/errors/internal/testutils"
@@ -96,10 +97,10 @@ func withCaller(fn errorer) error {
 }
 
 var (
-	withCallerL     = "95"
-	withFrameL      = "90"
-	withStackTraceL = "85"
-	withWrapL       = "80"
+	withCallerL     = "96"
+	withFrameL      = "91"
+	withStackTraceL = "86"
+	withWrapL       = "81"
 
 	errorsTestPkgM  = `github\.com/secureworks/errors`
 	errorsTestFilM  = `/errors_test\.go`
@@ -123,19 +124,19 @@ var (
 	stackChainM = []string{
 		"", // Newline.
 		errorTestAnonM("2.1.1.1"),
-		errorTestFileM("42"),
+		errorTestFileM("43"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("2.1.1"),
-		errorTestFileM("40"),
+		errorTestFileM("41"),
 		withStackFuncM,
 		errorTestFileM(withStackTraceL),
 		errorTestAnonM("2.1"),
-		errorTestFileM("38"),
+		errorTestFileM("39"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("2"),
-		errorTestFileM("36"),
+		errorTestFileM("37"),
 		// Append top-level caller(s) in test.
 	}
 
@@ -144,15 +145,15 @@ var (
 		withStackFuncM,
 		errorTestFileM(withStackTraceL),
 		errorTestAnonM("3.1.1"),
-		errorTestFileM("54"),
+		errorTestFileM("55"),
 		withWrapFuncM,
 		errorTestFileM(withWrapL),
 		errorTestAnonM("3.1"),
-		errorTestFileM("52"),
+		errorTestFileM("53"),
 		withFrameFuncM,
 		errorTestFileM(withFrameL),
 		errorTestAnonM("3"),
-		errorTestFileM("50"),
+		errorTestFileM("51"),
 		// Append top-level caller(s) in test.
 	}
 )
@@ -164,6 +165,15 @@ func nilError() error {
 type errorType struct{}
 
 func (e errorType) Error() string { return "i'm an error" }
+
+var (
+	stackFramerIface = reflect.TypeOf((*interface {
+		Frames() Frames
+	})(nil)).Elem()
+	stackTracerIface = reflect.TypeOf((*interface {
+		StackTrace() []uintptr
+	})(nil)).Elem()
+)
 
 func TestErrorFrames(t *testing.T) {
 	t.Run("Stdlib", func(t *testing.T) {
@@ -499,11 +509,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`470`),
+					errorTestFileM(`480`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`471`),
+					errorTestFileM(`481`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`472`),
+					errorTestFileM(`482`),
 				},
 			},
 		}
@@ -545,7 +555,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`473`),
+					errorTestFileM(`483`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},
