@@ -312,4 +312,4 @@
 //
 // Though none of these are exported by this package, they are
 // considered a part of its stable public interface.
-package errors // "github.com/secureworks/errors"
+package errors

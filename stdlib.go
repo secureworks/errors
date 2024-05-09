@@ -1,4 +1,4 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 // These are the exported package functions defined in the standard
 // library. They are copied here (along with their doc comments) so that

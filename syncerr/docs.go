@@ -61,4 +61,4 @@
 //	// ...
 //	merr := group.WaitForMultiError()
 //	fmt.Println(merr.Errors())
-package syncerr // "github.com/secureworks/errors/syncerr"
+package syncerr

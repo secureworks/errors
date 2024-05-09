@@ -1,4 +1,4 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 import _ "github.com/secureworks/errors/internal/constraints"
 
