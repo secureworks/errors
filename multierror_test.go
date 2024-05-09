@@ -13,10 +13,15 @@ var (
 	errBasic        = New("new err")
 	errSentinel     = New("sentinel err")
 	errWrapSentinel = fmt.Errorf("wrap: %w", errSentinel)
-	errWithFrames   = NewWithStackTrace("stack trace err")
 	errMultiWrap    = fmt.Errorf("wrap 2: %w", fmt.Errorf("wrap 1: %w", New("err")))
 	errWrappedMulti = fmt.Errorf("wrap: %w", &multiErrorType{msg: "err", errs: []error{errBasic, errBasic}})
+
+	errWithFrames error
 )
+
+func init() {
+	errWithFrames = NewWithStackTrace("stack trace err")
+}
 
 type errorList []errorType
 
@@ -349,7 +354,7 @@ func TestMultiErrorFormat(t *testing.T) {
 			{
 				format: "%#v",
 				error:  merr,
-				expect: `^\*MultiError\{stack trace err; wrap 2: wrap 1: err\}$`,
+				expect: `^\*errors.MultiError\{stack trace err; wrap 2: wrap 1: err\}$`,
 			},
 			{
 				format: "%d",
@@ -362,7 +367,7 @@ func TestMultiErrorFormat(t *testing.T) {
 				expect: `multiple errors:
 
 \* error 1 of 2: stack trace err
-github\.com/secureworks/errors_test\.init
+github\.com/secureworks/errors\.init
 	.+/multierror_test.go:\d+
 runtime\.doInit
 	.+/runtime/proc\.go:\d+
@@ -392,7 +397,7 @@ runtime\.main
 			{"%s", `^\[\]$`},
 			{"%q", `^"\[\]"$`},
 			{"%v", `^\[\]$`},
-			{"%#v", `^\*MultiError\{\}$`},
+			{"%#v", `^\*errors.MultiError\{\}$`},
 			{"%d", ``},
 			{"%+v", `^empty errors: \[\]$`},
 		}
@@ -478,7 +483,7 @@ func TestAppend(t *testing.T) {
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertNotEqual(t, err2, errs[1])
 		testutils.AssertEqual(t,
-			"Append used incorrectly: second parameter may not be a multiError",
+			"errors.Append used incorrectly: second parameter may not be a multiError",
 			errs[1].Error())
 	})
 
@@ -493,7 +498,7 @@ func TestAppend(t *testing.T) {
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertNotEqual(t, err2, errs[1])
 		testutils.AssertEqual(t,
-			"Append used incorrectly: second parameter may not be a multiError",
+			"errors.Append used incorrectly: second parameter may not be a multiError",
 			errs[1].Error())
 	})
 
@@ -543,7 +548,7 @@ func TestAppendInto(t *testing.T) {
 
 		// Panic val is an error with the given message and a stack trace.
 		testutils.AssertEqual(t,
-			`AppendInto used incorrectly: receiving pointer must not be nil`,
+			`errors.AppendInto used incorrectly: receiving pointer must not be nil`,
 			err.Error())
 		withTrace, ok := err.(interface{ Frames() Frames })
 		testutils.AssertTrue(t, ok)
@@ -614,7 +619,7 @@ func TestAppendInto(t *testing.T) {
 		testutils.AssertEqual(t, err1Backup, errs[0])
 		testutils.AssertNotEqual(t, err2, errs[1])
 		testutils.AssertEqual(t,
-			"AppendInto used incorrectly: second parameter may not be a multiError",
+			"errors.AppendInto used incorrectly: second parameter may not be a multiError",
 			errs[1].Error())
 	})
 
