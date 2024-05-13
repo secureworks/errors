@@ -49,3 +49,16 @@ func Is(err, target error) bool { return stderrors.Is(err, target) }
 // As panics if target is not a non-nil pointer to either a type that implements
 // error, or to any interface type.
 func As(err error, target interface{}) bool { return stderrors.As(err, target) }
+
+// Join returns an error that wraps the given errors. Any nil error
+// values are discarded. Join returns nil if every value in errs is nil.
+// The error formats as the concatenation of the strings obtained by
+// calling the Error method of each element of errs.
+//
+// A non-nil error returned by Join implements the Unwrap() []error
+// method.
+//
+// Since you are using the github.com/secureworks/errors package, be
+// aware that this returns a MultiError instead of the default standard
+// library's implementation.
+func Join(errs ...error) error { return Append(errs...) }
