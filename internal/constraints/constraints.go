@@ -5,7 +5,7 @@ package constraints
 
 var (
 	// Only available when on Go v1.13 or more.
-	_ = Go113
+	_ = Go120
 
 	// Only available on 64-bit architectures.
 	_ = GoArch64
