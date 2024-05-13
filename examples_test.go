@@ -416,7 +416,7 @@ func ExampleFramesFrom_stackTrace() {
 }
 
 func ExampleWithMessage() {
-	err := errors.New(newMsg)
+	err := errors.New("new err message")
 	err = errors.Errorf("context: %w", err)
 	err = errors.Errorf("outermost context: %w", err)
 	err = errors.WithMessage(err, "new err message")
@@ -427,7 +427,7 @@ func ExampleWithMessage() {
 }
 
 func ExampleMask() {
-	err := errors.New(newMsg)
+	err := errors.New("new err message")
 	err = errors.Errorf("context: %w", err)
 	err = errors.Errorf("outermost context: %w", err)
 	err = errors.Mask(errors.WithMessage(err, "err"))
@@ -830,4 +830,10 @@ func ExampleAppendResult() {
 	// Output:
 	// [some error we got; and a closer error to boot!]
 	// noErrFn returned nil
+}
+
+type testCloser struct{ err error }
+
+func (t testCloser) Close() error {
+	return t.err
 }

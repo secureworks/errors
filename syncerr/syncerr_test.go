@@ -1,4 +1,4 @@
-package syncerr_test
+package syncerr
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/secureworks/errors"
 	"github.com/secureworks/errors/internal/testutils"
-	"github.com/secureworks/errors/syncerr"
 )
 
 type errorType struct{}
@@ -43,7 +42,7 @@ func TestCoordinatedGroup(t *testing.T) {
 
 	for i, tc := range cases {
 		octx := context.Background()
-		group, ictx := syncerr.NewCoordinatedGroup(octx)
+		group, ictx := NewCoordinatedGroup(octx)
 		for _, err := range tc.errs {
 			err := err
 			group.Go(func() error { return err })
@@ -97,7 +96,7 @@ func TestCoordinatedGroup_ZeroValue(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		group := new(syncerr.CoordinatedGroup)
+		group := new(CoordinatedGroup)
 
 		for j, err := range tc.errs {
 			err := err
@@ -136,7 +135,7 @@ func TestParallelGroup(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		group := new(syncerr.ParallelGroup)
+		group := new(ParallelGroup)
 
 		var taskErrors []error
 		for _, err := range tc.errs {
@@ -162,7 +161,7 @@ func TestParallelGroup(t *testing.T) {
 func TestCoordinatedGroup_WrapName(t *testing.T) {
 	err1 := errors.New("new err")
 
-	group := new(syncerr.CoordinatedGroup)
+	group := new(CoordinatedGroup)
 
 	for _, err := range []error{nil, err1, nil} {
 		err := err
@@ -177,7 +176,7 @@ func TestParallelGroup_WrapName(t *testing.T) {
 	err1 := errors.New("new err: 1")
 	err2 := errors.New("new err: 2")
 
-	group := new(syncerr.ParallelGroup)
+	group := new(ParallelGroup)
 
 	for i, err := range []error{err1, nil, nil, err2} {
 		err := err

@@ -15,8 +15,8 @@
 // All groups share the interface:
 //
 //	type taskGroup interface {
-//	    Go(func() error, ...string)
-//	    Wait() error
+//		Go(func() error, ...string)
+//		Wait() error
 //	}
 //
 // # CoordinatedGroup
@@ -33,7 +33,7 @@
 //	group.Go(taskRunner, "task", "1")
 //	// ...
 //	if err := group.Wait(); err != nil {
-//	    // ...
+//		// ...
 //	}
 //
 // The more terse, default version of the task runner returns a
@@ -61,4 +61,4 @@
 //	// ...
 //	merr := group.WaitForMultiError()
 //	fmt.Println(merr.Errors())
-package syncerr // "github.com/secureworks/errors/syncerr"
+package syncerr

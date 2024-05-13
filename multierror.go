@@ -1,4 +1,4 @@
-package errors // "github.com/secureworks/errors"
+package errors
 
 // Attribution: portions of the below code and documentation are
 // modeled directly on the https://github.com/uber-go/multierr library,
@@ -34,7 +34,7 @@ import (
 // implementation relies on the unexported interface:
 //
 //	type multiError interface {
-//	    Errors() []error
+//		Errors() []error
 //	}
 //
 // This is for simplicity and interoperability: you can still extract
@@ -137,7 +137,7 @@ func (merr *MultiError) Error() string {
 // use in code that may not want to expect a MultiError type directly:
 //
 //	if merr, ok := err.(interface{ Errors() [] error }); ok {
-//	    // ...
+//		// ...
 //	}
 //
 // Do not modify the returned errors and expect the MultiError to remain
@@ -290,7 +290,7 @@ func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 //	var err error
 //	// ...
 //	if errors.AppendInto(&err, w.Close()) {
-//	    errs := errors.ErrorsFrom(err)
+//		errs := errors.ErrorsFrom(err)
 //	}
 //
 // If the error is not composed of other errors, the returned slice
@@ -387,30 +387,30 @@ func Append(receivingErr error, appendingErr error) *MultiError {
 //
 //	var err error
 //	for line := range lines {
-//	    var item Item
-//	    if errors.AppendInto(&err, parse(line, &item)) {
-//	        continue
-//	    }
-//	    items = append(items, item)
+//		var item Item
+//		if errors.AppendInto(&err, parse(line, &item)) {
+//			continue
+//		}
+//		items = append(items, item)
 //	}
 //	if err != nil {
-//	    log.Fatal(err)
+//		log.Fatal(err)
 //	}
 //
 // Compare this with a version that relies solely on Append:
 //
 //	var merr *errors.MultiError
 //	for line := range lines {
-//	    var item Item
-//	    if parseErr := parse(line, &item); parseErr != nil {
-//	        merr = errors.Append(merr, parseErr)
-//	        continue
-//	    }
-//	    items = append(items, item)
+//		var item Item
+//		if parseErr := parse(line, &item); parseErr != nil {
+//			merr = errors.Append(merr, parseErr)
+//			continue
+//		}
+//		items = append(items, item)
 //	}
 //	err := merr.ErrorOrNil()
 //	if err != nil {
-//	    log.Fatal(err)
+//		log.Fatal(err)
 //	}
 //
 // As in Append, if you pass a multiError as the second error AppendInto
@@ -452,23 +452,23 @@ type ErrorResulter func() error
 // capture the resulting errors.
 //
 //	func doSomething(...) (err error) {
-//	    // ...
-//	    f, err := openFile(..)
-//	    if err != nil {
-//	        return err
-//	    }
+//		// ...
+//		f, err := openFile(..)
+//		if err != nil {
+//			return err
+//		}
 //
-//	    // errors will call f.Close() when this function returns, and if the
-//	    // operation fails it will append its error into the returned error.
-//	    defer errors.AppendInvoke(&err, f.Close)
+//		// errors will call f.Close() when this function returns, and if the
+//		// operation fails it will append its error into the returned error.
+//		defer errors.AppendInvoke(&err, f.Close)
 //
-//	    scanner := bufio.NewScanner(f)
-//	    // Similarly, this scheduled scanner.Err to be called and inspected
-//	    // when the function returns and append its error into the returned
-//	    // error.
-//	    defer errors.AppendResult(&err, scanner.Err)
+//		scanner := bufio.NewScanner(f)
+//		// Similarly, this scheduled scanner.Err to be called and inspected
+//		// when the function returns and append its error into the returned
+//		// error.
+//		defer errors.AppendResult(&err, scanner.Err)
 //
-//	    // ...
+//		// ...
 //	}
 //
 // Without defer, AppendResult behaves exactly like AppendInto.

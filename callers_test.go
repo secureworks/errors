@@ -1,67 +1,66 @@
-package errors_test
+package errors
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/secureworks/errors"
 	"github.com/secureworks/errors/internal/testutils"
 )
 
 // Callers to build up a call stack in tests.
 
-type CallerStruct struct{}
+type callerStruct struct{}
 
-func (c *CallerStruct) PtrFrameCaller(skip int) errors.Frame {
-	return FrameCallerAt(skip)
+func (c callerStruct) PtrFrameCaller(skip int) Frame {
+	return frameCallerAt(skip)
 }
 
-func (c *CallerStruct) PtrStackCaller(skip int) []errors.Frame {
-	return StackCallerAt(skip)
+func (c callerStruct) PtrStackCaller(skip int) []Frame {
+	return stackCallerAt(skip)
 }
 
-func FrameCallerAt(skip int) errors.Frame {
-	return errors.CallerAt(skip)
+func frameCallerAt(skip int) Frame {
+	return CallerAt(skip)
 }
 
-func StackCallerAt(skip int) []errors.Frame {
-	return errors.CallStackAt(skip)
+func stackCallerAt(skip int) []Frame {
+	return CallStackAt(skip)
 }
 
-func testCallerWrapper(skip int) errors.Frames {
-	var cs *CallerStruct
+func testCallerWrapper(skip int) Frames {
+	var cs callerStruct
 	return cs.PtrStackCaller(skip)
 }
 
-func (c *CallerStruct) PtrStackMostCaller(skip int, max int) []errors.Frame {
-	return StackCallerAtMost(skip, max)
+func (c callerStruct) PtrStackMostCaller(skip int, max int) []Frame {
+	return stackCallerAtMost(skip, max)
 }
 
-func StackCallerAtMost(skip int, max int) []errors.Frame {
-	return errors.CallStackAtMost(skip, max)
+func stackCallerAtMost(skip int, max int) []Frame {
+	return CallStackAtMost(skip, max)
 }
 
-func testCallerMostWrapper(skip int, max int) errors.Frames {
-	var cs *CallerStruct
+func testCallerMostWrapper(skip int, max int) Frames {
+	var cs callerStruct
 	return cs.PtrStackMostCaller(skip, max)
 }
 
 var (
-	callerWrapLine     = 16
-	callStackWrapLine  = 20
-	callerAtLine       = 24
-	callStackAtLine    = 28
-	funcWrapLine       = 33
-	callerMostWrapLine = 37
-	callerAtMostLine   = 41
-	funcMostLine       = 46
+	callerWrapLine     = 15
+	callStackWrapLine  = 19
+	callerAtLine       = 23
+	callStackAtLine    = 27
+	funcWrapLine       = 32
+	callerMostWrapLine = 36
+	callerAtMostLine   = 40
+	funcMostLine       = 45
 )
 
 func TestCallerAt(t *testing.T) {
-	var cs *CallerStruct
+	var cs callerStruct
 	cases := []struct {
 		name  string
-		frame errors.Frame
+		frame Frame
 		fn    string
 		file  string
 		line  int
@@ -69,23 +68,23 @@ func TestCallerAt(t *testing.T) {
 		{
 			name:  "skip:0",
 			frame: cs.PtrFrameCaller(0),
-			fn:    `.+\/errors_test\.FrameCaller`,
+			fn:    `.+\/errors\.frameCaller`,
 			file:  `.+\/callers_test\.go`,
 			line:  callerAtLine,
 		},
 		{
 			name:  "skip:1",
 			frame: cs.PtrFrameCaller(1),
-			fn:    `.+\/errors_test\.\(\*CallerStruct\)\.PtrFrameCaller`,
+			fn:    `.+\/errors\.callerStruct\.PtrFrameCaller`,
 			file:  `.+\/callers_test\.go`,
 			line:  callerWrapLine,
 		},
 		{
 			name:  "skip:2",
 			frame: cs.PtrFrameCaller(2),
-			fn:    `.+\/errors_test\.TestCallerAt`,
+			fn:    `.+\/errors\.TestCallerAt`,
 			file:  `.+\/callers_test\.go`,
-			line:  85,
+			line:  84,
 		},
 		{
 			name:  "skip:3",
@@ -118,8 +117,8 @@ func TestCaller(t *testing.T) {
 	var line1, line2 int
 
 	caller := func() {
-		function1, file1, line1 = errors.CallerAt(0).Location()
-		function2, file2, line2 = errors.Caller().Location()
+		function1, file1, line1 = CallerAt(0).Location()
+		function2, file2, line2 = Caller().Location()
 	}
 	caller()
 
@@ -131,7 +130,7 @@ func TestCaller(t *testing.T) {
 func TestCallStackAt(t *testing.T) {
 	var testFnFrame = func(line int) testFrame {
 		return testFrame{
-			`.+\/errors_test\.TestCallStackAt`,
+			`.+\/errors\.TestCallStackAt`,
 			`.+\/callers_test\.go`,
 			line,
 		}
@@ -139,7 +138,7 @@ func TestCallStackAt(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		stack  errors.Frames
+		stack  Frames
 		frames []testFrame
 	}{
 		{
@@ -149,7 +148,7 @@ func TestCallStackAt(t *testing.T) {
 				callerFrame,
 				callerStructFrame,
 				wrapperFrame,
-				testFnFrame(147),
+				testFnFrame(146),
 				testRunnerFrame,
 			},
 		},
@@ -159,7 +158,7 @@ func TestCallStackAt(t *testing.T) {
 			frames: []testFrame{
 				callerStructFrame,
 				wrapperFrame,
-				testFnFrame(158),
+				testFnFrame(157),
 				testRunnerFrame,
 			},
 		},
@@ -168,7 +167,7 @@ func TestCallStackAt(t *testing.T) {
 			stack: testCallerWrapper(2),
 			frames: []testFrame{
 				wrapperFrame,
-				testFnFrame(168),
+				testFnFrame(167),
 				testRunnerFrame,
 			},
 		},
@@ -176,7 +175,7 @@ func TestCallStackAt(t *testing.T) {
 			name:  "skip:3",
 			stack: testCallerWrapper(3),
 			frames: []testFrame{
-				testFnFrame(177),
+				testFnFrame(176),
 				testRunnerFrame,
 			},
 		},
@@ -214,11 +213,11 @@ func TestCallStackAt(t *testing.T) {
 }
 
 func TestCallStack(t *testing.T) {
-	var stack1, stack2 errors.Frames
+	var stack1, stack2 Frames
 
 	caller := func() {
-		stack1 = errors.CallStackAt(0)
-		stack2 = errors.CallStack()
+		stack1 = CallStackAt(0)
+		stack2 = CallStack()
 	}
 	caller()
 
@@ -239,7 +238,7 @@ func TestCallStack(t *testing.T) {
 func TestCallStackAtMost(t *testing.T) {
 	var testFnFrame = func(line int) testFrame {
 		return testFrame{
-			`.+\/errors_test\.TestCallStackAtMost`,
+			`.+\/errors\.TestCallStackAtMost`,
 			`.+\/callers_test\.go`,
 			line,
 		}
@@ -247,7 +246,7 @@ func TestCallStackAtMost(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		stack  errors.Frames
+		stack  Frames
 		frames []testFrame
 	}{
 		{
@@ -257,7 +256,7 @@ func TestCallStackAtMost(t *testing.T) {
 				callerMostFrame,
 				callerMostStructFrame,
 				wrapperMostFrame,
-				testFnFrame(255),
+				testFnFrame(254),
 				testRunnerFrame,
 			},
 		},
@@ -277,7 +276,7 @@ func TestCallStackAtMost(t *testing.T) {
 				callerMostFrame,
 				callerMostStructFrame,
 				wrapperMostFrame,
-				testFnFrame(275),
+				testFnFrame(274),
 				testRunnerFrame,
 			},
 		},
@@ -286,7 +285,7 @@ func TestCallStackAtMost(t *testing.T) {
 			stack: testCallerMostWrapper(2, 0),
 			frames: []testFrame{
 				wrapperMostFrame,
-				testFnFrame(286),
+				testFnFrame(285),
 				testRunnerFrame,
 			},
 		},
@@ -295,7 +294,7 @@ func TestCallStackAtMost(t *testing.T) {
 			stack: testCallerMostWrapper(2, 2),
 			frames: []testFrame{
 				wrapperMostFrame,
-				testFnFrame(295),
+				testFnFrame(294),
 			},
 		},
 		{
@@ -303,7 +302,7 @@ func TestCallStackAtMost(t *testing.T) {
 			stack: testCallerMostWrapper(2, 6),
 			frames: []testFrame{
 				wrapperMostFrame,
-				testFnFrame(303),
+				testFnFrame(302),
 				testRunnerFrame,
 			},
 		},
@@ -341,32 +340,32 @@ type testFrame struct {
 
 var (
 	callerFrame = testFrame{
-		fn:   `.+\/errors_test\.StackCaller`,
+		fn:   `.+\/errors\.stackCaller`,
 		file: `.+\/callers_test\.go`,
 		line: callStackAtLine,
 	}
 	callerStructFrame = testFrame{
-		fn:   `.+\/errors_test\.\(\*CallerStruct\)\.PtrStackCaller`,
+		fn:   `.+\/errors\.callerStruct\.PtrStackCaller`,
 		file: `.+\/callers_test\.go`,
 		line: callStackWrapLine,
 	}
 	wrapperFrame = testFrame{
-		fn:   `.+\/errors_test\.testCallerWrapper`,
+		fn:   `.+\/errors\.testCallerWrapper`,
 		file: `.+\/callers_test\.go`,
 		line: funcWrapLine,
 	}
 	callerMostFrame = testFrame{
-		fn:   `.+\/errors_test\.StackCallerAtMost`,
+		fn:   `.+\/errors\.stackCallerAtMost`,
 		file: `.+\/callers_test\.go`,
 		line: callerAtMostLine,
 	}
 	callerMostStructFrame = testFrame{
-		fn:   `.+\/errors_test\.\(\*CallerStruct\)\.PtrStackMostCaller`,
+		fn:   `.+\/errors\.callerStruct\.PtrStackMostCaller`,
 		file: `.+\/callers_test\.go`,
 		line: callerMostWrapLine,
 	}
 	wrapperMostFrame = testFrame{
-		fn:   `.+\/errors_test\.testCallerMostWrapper`,
+		fn:   `.+\/errors\.testCallerMostWrapper`,
 		file: `.+\/callers_test\.go`,
 		line: funcMostLine,
 	}
