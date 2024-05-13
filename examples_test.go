@@ -526,24 +526,6 @@ func ExampleMultiError_Errors() {
 	// err3
 }
 
-func ExampleMultiError_ErrorN() {
-	merr := errors.NewMultiError(
-		errors.New("err1"),
-		errors.New("err2"),
-		errors.New("err3"),
-	)
-	pprint("\n", merr.ErrorN(0))
-	pprint("\n", merr.ErrorN(1))
-	pprint("\n", merr.ErrorN(2))
-	pprint("\n", merr.ErrorN(3))
-
-	// Output:
-	// err1
-	// err2
-	// err3
-	// <nil>
-}
-
 func ExampleMultiError_ErrorOrNil() {
 	pprint("\n", errors.NewMultiError().ErrorOrNil())
 	pprint("\n", errors.NewMultiError(nil).ErrorOrNil())
@@ -646,7 +628,6 @@ func ExampleMultiError_is() {
 }
 
 func ExampleMultiError_printf() {
-	merrNil := (*errors.MultiError)(nil)
 	merrEmpty := errors.NewMultiError()
 	merrFull := errors.NewMultiError(
 		errors.New("err1"),
@@ -656,15 +637,13 @@ func ExampleMultiError_printf() {
 	merrWrapped := errors.Errorf("context: %w", merrFull)
 
 	fmt.Println()
-	pprintf("1. %+v\n", merrNil)
-	pprintf("2. %+v\n", merrEmpty)
-	pprintf("3. %+v\n", merrFull)
-	pprintf("4. %+v\n", merrWrapped)
+	pprintf("1. %+v\n", merrEmpty)
+	pprintf("2. %+v\n", merrFull)
+	pprintf("3. %+v\n", merrWrapped)
 
 	// Output:
 	// 1. empty errors: []
-	// 2. empty errors: []
-	// 3. multiple errors:
+	// 2. multiple errors:
 	//
 	// * error 1 of 3: err1
 	//
@@ -686,7 +665,7 @@ func ExampleMultiError_printf() {
 	// runtime.main
 	// 	/go/src/runtime/proc.go:0
 	//
-	// 4. context: [err1; err2; err3]
+	// 3. context: [err1; err2; err3]
 	// github.com/secureworks/errors_test.ExampleMultiError_printf
 	// 	/home/testuser/pkgs/errors/examples_test.go:0
 }
@@ -736,33 +715,45 @@ func ExampleErrorsFrom_nil() {
 }
 
 func ExampleAppend() {
-	merr := errors.Append(
+	err := errors.Append(
 		nil,
 		nil,
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err1"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err2"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err3"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
 	// Output:
-	// []
-	// [err1]
+	// <nil>
+	// <nil>
+	// err1
+	// err1
+	// [err1; err2]
 	// [err1; err2]
 	// [err1; err2; err3]
 }
