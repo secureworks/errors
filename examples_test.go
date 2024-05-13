@@ -736,33 +736,45 @@ func ExampleErrorsFrom_nil() {
 }
 
 func ExampleAppend() {
-	merr := errors.Append(
+	err := errors.Append(
 		nil,
 		nil,
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err1"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err2"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
-	merr = errors.Append(
-		merr,
+	err = errors.Append(err, nil)
+	fmt.Printf("\n%v", err)
+
+	err = errors.Append(
+		err,
 		errors.New("err3"),
 	)
-	fmt.Printf("\n%s", merr)
+	fmt.Printf("\n%v", err)
 
 	// Output:
-	// []
-	// [err1]
+	// <nil>
+	// <nil>
+	// err1
+	// err1
+	// [err1; err2]
 	// [err1; err2]
 	// [err1; err2; err3]
 }

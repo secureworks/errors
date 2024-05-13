@@ -355,30 +355,6 @@ func TestErrorStackTrace(t *testing.T) {
 	})
 }
 
-func TestNilInputs(t *testing.T) {
-	t.Run("WithFrame", func(t *testing.T) {
-		testutils.AssertTrue(t, WithFrame(nil) == nil)
-		testutils.AssertTrue(t, WithFrame((*errorType)(nil)) == nil)
-	})
-	t.Run("WithFrameAt", func(t *testing.T) {
-		testutils.AssertTrue(t, WithFrameAt(nil, 4) == nil)
-		testutils.AssertTrue(t, WithFrameAt((*errorType)(nil), 4) == nil)
-	})
-	t.Run("WithFrames", func(t *testing.T) {
-		ff := Frames{}
-		testutils.AssertTrue(t, WithFrames(nil, ff) == nil)
-		testutils.AssertTrue(t, WithFrames((*errorType)(nil), ff) == nil)
-	})
-	t.Run("WithStackTrace", func(t *testing.T) {
-		testutils.AssertTrue(t, WithStackTrace(nil) == nil)
-		testutils.AssertTrue(t, WithStackTrace((*errorType)(nil)) == nil)
-	})
-	t.Run("WithMessage", func(t *testing.T) {
-		testutils.AssertTrue(t, WithMessage(nil, "new msg") == nil)
-		testutils.AssertTrue(t, WithMessage((*errorType)(nil), "new msg") == nil)
-	})
-}
-
 func TestErrorf(t *testing.T) {
 	t.Run("panics on bad format", func(t *testing.T) {
 		err := func() (err error) {
@@ -509,11 +485,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`480`),
+					errorTestFileM(`456`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`481`),
+					errorTestFileM(`457`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`482`),
+					errorTestFileM(`458`),
 				},
 			},
 		}
@@ -555,7 +531,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`483`),
+					errorTestFileM(`459`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},
@@ -596,7 +572,6 @@ func TestErrorFormat(t *testing.T) {
 func TestMask(t *testing.T) {
 	t.Run("nil does nothing", func(t *testing.T) {
 		testutils.AssertNil(t, Mask(nil))
-		testutils.AssertNil(t, Mask((*errorType)(nil)))
 	})
 	t.Run("collapses wrapped errors, removing all information", func(t *testing.T) {
 		signalErr := New("err1")
@@ -616,7 +591,6 @@ func TestMask(t *testing.T) {
 func TestOpaque(t *testing.T) {
 	t.Run("nil does nothing", func(t *testing.T) {
 		testutils.AssertNil(t, Opaque(nil))
-		testutils.AssertNil(t, Opaque((*errorType)(nil)))
 	})
 	t.Run("collapses wrapped errors, but retains frames", func(t *testing.T) {
 		signalErr := New("err1")

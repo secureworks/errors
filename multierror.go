@@ -106,7 +106,7 @@ func flatten(m multiError) (errs []error) {
 	}
 
 	for _, err := range m.Errors() {
-		if isNil(err) {
+		if err == nil {
 			continue
 		}
 		if mm := unwrapMultiErr(err); mm != nil {
@@ -151,7 +151,7 @@ func (merr *MultiError) Error() string {
 // Do not modify the returned errors and expect the MultiError to remain
 // stable.
 func (merr *MultiError) Errors() []error {
-	if isNil(merr) || len(merr.errors) == 0 {
+	if merr == nil || len(merr.errors) == 0 {
 		return nil
 	}
 	return merr.errors
@@ -159,7 +159,7 @@ func (merr *MultiError) Errors() []error {
 
 // Len returns the number of errors currently in the MultiError.
 func (merr *MultiError) Len() int {
-	if isNil(merr) {
+	if merr == nil {
 		return 0
 	}
 	return len(merr.errors)
@@ -168,7 +168,7 @@ func (merr *MultiError) Len() int {
 // ErrorN returns the error at the given index in the MultiError. If
 // this index does not exist then we return nil.
 func (merr *MultiError) ErrorN(n int) error {
-	if isNil(merr) {
+	if merr == nil {
 		return nil
 	}
 	l := len(merr.errors)
@@ -313,7 +313,7 @@ func formatMessages(w io.Writer, merr multiError, delimiters [2]string) {
 //
 // Callers of this function are free to modify the returned slice.
 func ErrorsFrom(err error) []error {
-	if isNil(err) {
+	if err == nil {
 		return nil
 	}
 	if merr, ok := err.(*MultiError); ok {

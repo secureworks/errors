@@ -70,12 +70,7 @@ func TestMultiError(t *testing.T) {
 		err2 := New("err 2")
 		err3 := New("err 3")
 
-		// Problematic nils.
-		var nilErrList errorList
-		nilErr := (*errorType)(nil)
-
-		merr := NewMultiError(
-			nilError(), err1, nilError(), err2, nilErr, err3, nilErrList)
+		merr := NewMultiError(nilError(), err1, nilError(), err2, err3)
 
 		errs := merr.Errors()
 		testutils.AssertEqual(t, 3, len(errs))
@@ -653,9 +648,6 @@ func TestAppendResult(t *testing.T) {
 
 	var err error
 
-	// Problematic nil.
-	nilErr := (*errorType)(nil)
-
 	t.Run("nil appends err", func(t *testing.T) {
 		err = func() (e error) {
 			c := newTestCloser(errBasic)
@@ -668,7 +660,7 @@ func TestAppendResult(t *testing.T) {
 
 	t.Run("err appends nil", func(t *testing.T) {
 		err = func() (e error) {
-			c := newTestCloser(nilErr)
+			c := newTestCloser(nil)
 			e = errBasic
 			defer AppendResult(&e, c.Close)
 			return
