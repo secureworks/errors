@@ -24,65 +24,6 @@ func TestNew(t *testing.T) {
 	testutils.AssertEqual(t, stdErr.Error(), libErr.Error())
 }
 
-func TestNewWith(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-		wrap bool
-		impl []reflect.Type
-	}{
-		{
-			name: "Stack",
-			err:  NewWithStackTrace("new err"),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramerIface,
-				stackTracerIface,
-			},
-		},
-		{
-			name: "Frame",
-			err:  NewWithFrame("new err"),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramerIface,
-			},
-		},
-		{
-			name: "FrameAt",
-			err:  NewWithFrameAt("new err", 0),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramerIface,
-			},
-		},
-		{
-			name: "Frames",
-			err:  NewWithFrames("new err", Frames{}),
-			wrap: true,
-			impl: []reflect.Type{
-				stackFramerIface,
-			},
-		},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			// Unwraps.
-			baseErr := Unwrap(tt.err)
-			if tt.wrap {
-				testutils.AssertEqual(t, "new err", baseErr.Error())
-			} else {
-				testutils.AssertNil(t, baseErr)
-			}
-
-			// Implements.
-			for _, iface := range tt.impl {
-				testutils.AssertTrue(t, reflect.TypeOf(tt.err).Implements(iface))
-			}
-		})
-	}
-}
-
 func TestUnwrap(t *testing.T) {
 	err := New("new err")
 

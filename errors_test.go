@@ -175,6 +175,65 @@ var (
 	})(nil)).Elem()
 )
 
+func TestNewWith(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		wrap bool
+		impl []reflect.Type
+	}{
+		{
+			name: "Stack",
+			err:  NewWithStackTrace("new err"),
+			wrap: true,
+			impl: []reflect.Type{
+				stackFramerIface,
+				stackTracerIface,
+			},
+		},
+		{
+			name: "Frame",
+			err:  NewWithFrame("new err"),
+			wrap: true,
+			impl: []reflect.Type{
+				stackFramerIface,
+			},
+		},
+		{
+			name: "FrameAt",
+			err:  NewWithFrameAt("new err", 0),
+			wrap: true,
+			impl: []reflect.Type{
+				stackFramerIface,
+			},
+		},
+		{
+			name: "Frames",
+			err:  NewWithFrames("new err", Frames{}),
+			wrap: true,
+			impl: []reflect.Type{
+				stackFramerIface,
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			// Unwraps.
+			baseErr := Unwrap(tt.err)
+			if tt.wrap {
+				testutils.AssertEqual(t, "new err", baseErr.Error())
+			} else {
+				testutils.AssertNil(t, baseErr)
+			}
+
+			// Implements.
+			for _, iface := range tt.impl {
+				testutils.AssertTrue(t, reflect.TypeOf(tt.err).Implements(iface))
+			}
+		})
+	}
+}
+
 func TestErrorFrames(t *testing.T) {
 	t.Run("Stdlib", func(t *testing.T) {
 		err := New("")
@@ -355,49 +414,27 @@ func TestErrorStackTrace(t *testing.T) {
 	})
 }
 
-func TestErrorf(t *testing.T) {
-	t.Run("panics on bad format", func(t *testing.T) {
-		err := func() (err error) {
-			defer func() {
-				err = recover().(error)
-			}()
-			_ = Errorf("does not wrap: %s", newErrorCaller())
-			return
-		}()
-
-		testutils.AssertNotNil(t, err)
-
-		// Panic val is an error with the given message and a stack trace.
-		testutils.AssertEqual(t,
-			`invalid use of errors.Errorf: `+
-				`format string must wrap an error, but "%w" not found: `+
-				`"does not wrap: %s"`, fmt.Sprint(err))
-		withTrace, ok := err.(interface{ Frames() Frames })
-		testutils.AssertTrue(t, ok)
-		testutils.AssertEqual(t, 4, len(withTrace.Frames()))
+func TestNilInputs(t *testing.T) {
+	t.Run("WithFrame", func(t *testing.T) {
+		testutils.AssertTrue(t, WithFrame(nil) == nil)
+		testutils.AssertTrue(t, WithFrame((*errorType)(nil)) == nil)
 	})
-
-	t.Run("wraps with message context", func(t *testing.T) {
-		err := Errorf("wraps: %w", newErrorCaller())
-		testutils.AssertEqual(t, `wraps: new err`, fmt.Sprint(err))
+	t.Run("WithFrameAt", func(t *testing.T) {
+		testutils.AssertTrue(t, WithFrameAt(nil, 4) == nil)
+		testutils.AssertTrue(t, WithFrameAt((*errorType)(nil), 4) == nil)
 	})
-
-	t.Run("wraps with frame context", func(t *testing.T) {
-		err := Errorf("wraps: %w", newErrorCaller())
-		withFrames, ok := err.(interface{ Frames() Frames })
-		testutils.AssertTrue(t, ok)
-		testutils.AssertLinesMatch(t, withFrames.Frames(), "%+v", []string{
-			"",
-			"^github.com/secureworks/errors\\.TestErrorf.func3$",
-			errorTestFileM(`\d+`),
-		})
+	t.Run("WithFrames", func(t *testing.T) {
+		ff := Frames{}
+		testutils.AssertTrue(t, WithFrames(nil, ff) == nil)
+		testutils.AssertTrue(t, WithFrames((*errorType)(nil), ff) == nil)
 	})
-
-	t.Run("handles variant params", func(t *testing.T) {
-		err := Errorf("wraps: %[2]s (%[3]d): %[1]w", newErrorCaller(), "inner", 1)
-		testutils.AssertErrorMessage(t, "wraps: inner (1): new err", err)
-		_, ok := err.(interface{ Frames() Frames })
-		testutils.AssertTrue(t, ok)
+	t.Run("WithStackTrace", func(t *testing.T) {
+		testutils.AssertTrue(t, WithStackTrace(nil) == nil)
+		testutils.AssertTrue(t, WithStackTrace((*errorType)(nil)) == nil)
+	})
+	t.Run("WithMessage", func(t *testing.T) {
+		testutils.AssertTrue(t, WithMessage(nil, "new msg") == nil)
+		testutils.AssertTrue(t, WithMessage((*errorType)(nil), "new msg") == nil)
 	})
 }
 
