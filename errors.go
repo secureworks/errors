@@ -359,7 +359,7 @@ func Opaque(err error) error {
 // Currently, this only supports single errors with or without a stack
 // trace or appended frames.
 //
-// TODO(PH): ensure ErrorFromBytes works with: multiError.
+// TODO(PH): ensure ErrorFromBytes works with: multierror.
 func ErrorFromBytes(byt []byte) (err error, ok bool) {
 	trimbyt := bytes.TrimRight(byt, "\n")
 	if len(trimbyt) == 0 || bytes.Equal(trimbyt, []byte("nil")) || bytes.Equal(trimbyt, []byte("<nil>")) {

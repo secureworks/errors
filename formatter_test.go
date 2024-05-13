@@ -20,7 +20,7 @@ func TestErrorf(t *testing.T) {
 		testutils.AssertLinesMatch(t, withFrames.Frames(), "%+v", []string{
 			"",
 			"^github.com/secureworks/errors\\.TestErrorf.func2$",
-			"^\t.+/format_test\\.go:\\d+$",
+			"^\t.+/formatter_test\\.go:\\d+$",
 		})
 	})
 

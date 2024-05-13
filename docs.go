@@ -309,7 +309,7 @@
 //		PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.
 //
 //		// Used to identify an error that coalesces multiple errors:
-//		Errors() []error // Ie "multiError," the interface for getting multiple merged errors.
+//		Unwrap() []error // Ie "multierror," the interface for getting multiple merged errors.
 //	}
 //
 // Though none of these are exported by this package, they are

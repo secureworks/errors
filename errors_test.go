@@ -417,24 +417,19 @@ func TestErrorStackTrace(t *testing.T) {
 func TestNilInputs(t *testing.T) {
 	t.Run("WithFrame", func(t *testing.T) {
 		testutils.AssertTrue(t, WithFrame(nil) == nil)
-		testutils.AssertTrue(t, WithFrame((*errorType)(nil)) == nil)
 	})
 	t.Run("WithFrameAt", func(t *testing.T) {
 		testutils.AssertTrue(t, WithFrameAt(nil, 4) == nil)
-		testutils.AssertTrue(t, WithFrameAt((*errorType)(nil), 4) == nil)
 	})
 	t.Run("WithFrames", func(t *testing.T) {
 		ff := Frames{}
 		testutils.AssertTrue(t, WithFrames(nil, ff) == nil)
-		testutils.AssertTrue(t, WithFrames((*errorType)(nil), ff) == nil)
 	})
 	t.Run("WithStackTrace", func(t *testing.T) {
 		testutils.AssertTrue(t, WithStackTrace(nil) == nil)
-		testutils.AssertTrue(t, WithStackTrace((*errorType)(nil)) == nil)
 	})
 	t.Run("WithMessage", func(t *testing.T) {
 		testutils.AssertTrue(t, WithMessage(nil, "new msg") == nil)
-		testutils.AssertTrue(t, WithMessage((*errorType)(nil), "new msg") == nil)
 	})
 }
 
@@ -522,11 +517,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`456`),
+					errorTestFileM(`488`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`457`),
+					errorTestFileM(`489`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`458`),
+					errorTestFileM(`490`),
 				},
 			},
 		}
@@ -568,7 +563,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`459`),
+					errorTestFileM(`491`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},
