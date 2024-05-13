@@ -127,7 +127,7 @@ func TestParallelGroup(t *testing.T) {
 
 		merr := group.WaitForMultiError()
 		expected := sortedMessages(taskErrors)
-		actual := sortedMessages(merr.Errors())
+		actual := sortedMessages(merr.Unwrap())
 		testutils.AssertEqual(t,
 			expected, actual, fmt.Sprintf("case %d: expected errors", i))
 	}
@@ -160,7 +160,7 @@ func TestParallelGroup_WrapName(t *testing.T) {
 
 	merr := group.WaitForMultiError()
 	testutils.AssertEqual(t,
-		[]string{"worker 0: new err: 1", "worker 3: new err: 2"}, sortedMessages(merr.Errors()))
+		[]string{"worker 0: new err: 1", "worker 3: new err: 2"}, sortedMessages(merr.Unwrap()))
 }
 
 func sortedMessages(errs []error) (msgs []string) {
