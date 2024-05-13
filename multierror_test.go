@@ -49,7 +49,7 @@ func (m *multiErrorType) Errors() []error {
 }
 
 func TestMultiError(t *testing.T) {
-	// Tests below for NewMultiError and Errors.
+	// Tests below for NewMultiError, Append and Errors.
 
 	t.Run("combines errors together, retaining order", func(t *testing.T) {
 		err1 := New("err 1")

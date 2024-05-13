@@ -143,9 +143,9 @@ func (merr *MultiError) ErrorOrNil() error {
 	return merr
 }
 
-// Append is a method for adding an error to a MultiError. It is
-// equivalent to using NewMultiError with the current errors and the
-// new error, and provides a way to do Append while working with the
+// Append is a method for adding errors to a MultiError. It is
+// equivalent to using NewMultiError with the current errors and the new
+// errors, and provides a way to do Append while working with the
 // MultiError type directly.
 func (merr *MultiError) Append(errs ...error) {
 	for _, err := range errs {
