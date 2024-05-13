@@ -158,51 +158,7 @@ func TestMultiError(t *testing.T) {
 	})
 }
 
-func TestLen(t *testing.T) {
-	cases := []struct {
-		name string
-		merr *MultiError
-		len  int
-	}{
-		{"nil", nil, 0},
-		{"0", NewMultiError(), 0},
-		{"1", NewMultiError(errBasic), 1},
-		{"n", NewMultiError(errBasic, errBasic, errBasic), 3},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.len, tt.merr.Len())
-		})
-	}
-}
-
-func TestErrorN(t *testing.T) {
-	merr := NewMultiError(errBasic, errBasic, errSentinel)
-	cases := []struct {
-		name   string
-		merr   *MultiError
-		n      int
-		expect error
-	}{
-		{"nil", nil, 0, nil},
-		{"len 0", NewMultiError(), 0, nil},
-		{"negative idx", merr, -1, nil},
-		{"idx overflow", merr, 3, nil},
-		{"check 0", merr, 0, errBasic},
-		{"check 1", merr, 1, errBasic},
-		{"check 2", merr, 2, errSentinel},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.expect, tt.merr.ErrorN(tt.n))
-		})
-	}
-}
-
 func TestMultiErrorErrorOrNil(t *testing.T) {
-	t.Run("returns nil when nil", func(t *testing.T) {
-		testutils.AssertNil(t, (*MultiError)(nil).ErrorOrNil())
-	})
 	t.Run("returns nil when nil errors list", func(t *testing.T) {
 		testutils.AssertNil(t, (&MultiError{}).ErrorOrNil())
 	})
@@ -228,10 +184,6 @@ func TestMultiErrorUnwrap(t *testing.T) {
 			errMultiWrap,
 		)
 		testutils.AssertNil(t, Unwrap(merr))
-	})
-
-	t.Run("handles nil", func(t *testing.T) {
-		testutils.AssertNil(t, Unwrap((*MultiError)(nil)))
 	})
 }
 
@@ -259,11 +211,6 @@ func TestMultiErrorAs(t *testing.T) {
 		As(merr, &testErr)
 		testutils.AssertEqual(t, err1, testErr)
 	})
-
-	t.Run("handles nil", func(t *testing.T) {
-		var testErr customErr
-		testutils.AssertFalse(t, As((*MultiError)(nil), &testErr))
-	})
 }
 
 func TestMultiErrorIs(t *testing.T) {
@@ -288,10 +235,6 @@ func TestMultiErrorIs(t *testing.T) {
 				testutils.AssertEqual(t, tt.found, merr.Is(tt.error))
 			})
 		}
-	})
-
-	t.Run("handles nil", func(t *testing.T) {
-		testutils.AssertFalse(t, Is((*MultiError)(nil), errBasic))
 	})
 }
 
@@ -373,8 +316,8 @@ runtime\.main
 		}
 	})
 
-	t.Run("formatted output handles nils", func(t *testing.T) {
-		merr := (*MultiError)(nil)
+	t.Run("formatted output handles empty", func(t *testing.T) {
+		merr := NewMultiError()
 
 		cases := []struct {
 			format string
