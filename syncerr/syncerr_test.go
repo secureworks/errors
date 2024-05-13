@@ -11,22 +11,8 @@ import (
 	"github.com/secureworks/errors/internal/testutils"
 )
 
-type errorType struct{}
-
-func (m errorType) Error() string { return "i'm an error" }
-
-type errorList []errorType
-
-func (m errorList) Error() string {
-	return fmt.Sprintf("i'm an error list x %d", len(m))
-}
-
 func TestCoordinatedGroup(t *testing.T) {
 	err := errors.New("new err")
-
-	// Problematic nils.
-	var nilErrList errorList
-	nilErr := (*errorType)(nil)
 
 	cases := []struct {
 		errs     []error
@@ -34,10 +20,8 @@ func TestCoordinatedGroup(t *testing.T) {
 	}{
 		{expected: nil},
 		{errs: []error{nil}, expected: nil},
-		{errs: []error{nilErrList, nilErr}, expected: nil},
 		{errs: []error{err}, expected: err},
 		{errs: []error{err, nil}, expected: err},
-		{errs: []error{nilErrList, err, nilErr}, expected: err},
 	}
 
 	for i, tc := range cases {
@@ -76,23 +60,16 @@ func TestCoordinatedGroup_ZeroValue(t *testing.T) {
 	err1 := errors.New("new err: 1")
 	err2 := errors.New("new err: 2")
 
-	// Problematic nils.
-	var nilErrList errorList
-	nilErr := (*errorType)(nil)
-
 	cases := []struct {
 		errs   []error
 		hasErr bool
 	}{
 		{errs: []error{}},
 		{errs: []error{nil}},
-		{errs: []error{nilErr, nilErr}},
 		{errs: []error{err1}, hasErr: true},
 		{errs: []error{err1, nil}, hasErr: true},
 		{errs: []error{err1, nil, err2}, hasErr: true},
 		{errs: []error{nil, err1, err2}, hasErr: true},
-		{errs: []error{err1, nilErrList, err2}, hasErr: true},
-		{errs: []error{nilErr, nilErrList, err1}, hasErr: true},
 	}
 
 	for i, tc := range cases {
@@ -118,20 +95,14 @@ func TestParallelGroup(t *testing.T) {
 	err1 := errors.New("new err: 1")
 	err2 := errors.New("new err: 2")
 
-	// Problematic nils.
-	var nilErrList errorList
-	nilErr := (*errorType)(nil)
-
 	cases := []struct {
 		errs []error
 	}{
 		{errs: []error{}},
 		{errs: []error{nil}},
-		{errs: []error{nilErrList}},
 		{errs: []error{err1}},
 		{errs: []error{err1, nil}},
 		{errs: []error{err1, nil, err2, nil}},
-		{errs: []error{err1, nilErr, err2, nilErr}},
 	}
 
 	for i, tc := range cases {
@@ -141,16 +112,20 @@ func TestParallelGroup(t *testing.T) {
 		for _, err := range tc.errs {
 			err := err
 			group.Go(func() error { return err })
-			if err == err1 || err == err2 {
+			if err != nil {
 				taskErrors = append(taskErrors, err)
 			}
 		}
 
 		err := group.Wait()
-		merr := group.WaitForMultiError()
-		testutils.AssertEqual(t, err, merr,
-			fmt.Sprintf("case %d: Wait == WaitForMultiError", i))
+		errorIsNil := err == nil
+		if len(taskErrors) == 0 {
+			testutils.AssertTrue(t, errorIsNil, fmt.Sprintf("case %d: Wait returns clean nil error", i))
+		} else {
+			testutils.AssertFalse(t, errorIsNil, fmt.Sprintf("case %d: Wait returns clean error", i))
+		}
 
+		merr := group.WaitForMultiError()
 		expected := sortedMessages(taskErrors)
 		actual := sortedMessages(merr.Errors())
 		testutils.AssertEqual(t,

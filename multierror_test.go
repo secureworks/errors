@@ -224,15 +224,6 @@ func TestMultiErrorErrorOrNil(t *testing.T) {
 		testutils.AssertNotNil(t, err)
 		testutils.AssertTrue(t, reflect.TypeOf(err).Implements(reflect.TypeOf((*error)(nil)).Elem()))
 	})
-	t.Run("Err() is an alias", func(t *testing.T) {
-		testutils.AssertNil(t, (*MultiError)(nil).Err())
-		testutils.AssertNil(t, (&MultiError{}).Err())
-		testutils.AssertNil(t, NewMultiError(nil, nil).Err())
-
-		err := NewMultiError(errBasic, nil).Err()
-		testutils.AssertNotNil(t, err)
-		testutils.AssertTrue(t, reflect.TypeOf(err).Implements(reflect.TypeOf((*error)(nil)).Elem()))
-	})
 }
 
 func TestMultiErrorUnwrap(t *testing.T) {
@@ -436,7 +427,7 @@ func TestAppend(t *testing.T) {
 
 		merr := Append(err1, err2)
 
-		errs := merr.Errors()
+		errs := ErrorsFrom(merr)
 		testutils.AssertEqual(t, 2, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
@@ -450,7 +441,7 @@ func TestAppend(t *testing.T) {
 
 		merr := Append(merrT1, err3)
 
-		errs := merr.Errors()
+		errs := ErrorsFrom(merr)
 		testutils.AssertEqual(t, 3, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
@@ -465,7 +456,7 @@ func TestAppend(t *testing.T) {
 
 		merr := Append(merrT1, err3)
 
-		errs := merr.Errors()
+		errs := ErrorsFrom(merr)
 		testutils.AssertEqual(t, 3, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
@@ -478,7 +469,7 @@ func TestAppend(t *testing.T) {
 
 		merr := Append(err1, NewMultiError(err2))
 
-		errs := merr.Errors()
+		errs := ErrorsFrom(merr)
 		testutils.AssertEqual(t, 2, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertNotEqual(t, err2, errs[1])
@@ -493,7 +484,7 @@ func TestAppend(t *testing.T) {
 
 		merr := Append(err1, &multiErrorType{msg: "err", errs: []error{err2}})
 
-		errs := merr.Errors()
+		errs := ErrorsFrom(merr)
 		testutils.AssertEqual(t, 2, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertNotEqual(t, err2, errs[1])
@@ -506,10 +497,6 @@ func TestAppend(t *testing.T) {
 		err := New("err")
 		merr := NewMultiError(err)
 
-		// Problematic nils.
-		var nilErrList errorList
-		nilErr := (*errorType)(nil)
-
 		cases := []struct {
 			name string
 			arg1 error
@@ -517,18 +504,14 @@ func TestAppend(t *testing.T) {
 			size int
 		}{
 			{"first arg nil", nil, err, 1},
-			{"first arg prob nil", nilErrList, err, 1},
 			{"second arg nil", err, nil, 1},
-			{"second arg prob nil", err, nilErr, 1},
 			{"first arg multi, second arg nil", merr, nil, 1},
-			{"first arg multi, second arg prob nil", merr, nilErr, 1},
 			{"first and second arg nil", nil, nil, 0},
-			{"first and second arg prob nil", nilErr, nilErrList, 0},
 		}
 		for _, tt := range cases {
 			t.Run(tt.name, func(t *testing.T) {
 				actual := Append(tt.arg1, tt.arg2)
-				testutils.AssertEqual(t, tt.size, len(actual.Errors()))
+				testutils.AssertEqual(t, tt.size, len(ErrorsFrom(actual)))
 			})
 		}
 	})
@@ -627,10 +610,6 @@ func TestAppendInto(t *testing.T) {
 		err := New("err")
 		merr := NewMultiError(err)
 
-		// Problematic nils.
-		var nilErrList errorList
-		nilErr := (*errorType)(nil)
-
 		cases := []struct {
 			name       string
 			arg1       error
@@ -640,13 +619,9 @@ func TestAppendInto(t *testing.T) {
 			size       int
 		}{
 			{"first arg nil", nil, err, false, false, 1},
-			{"first arg prob nil", nilErr, err, false, false, 1},
 			{"second arg nil", err, nil, true, false, 1},
-			{"second arg prob nil", err, nilErrList, true, false, 1},
 			{"first arg multi, second arg nil", merr, nil, true, false, 1},
-			{"first arg multi, second arg prob nil", merr, nilErr, true, false, 1},
 			{"first and second arg nil", nil, nil, true, true, 0},
-			{"first and second arg prob nil", nilErrList, nilErrList, true, true, 0},
 		}
 		for _, tt := range cases {
 			t.Run(tt.name, func(t *testing.T) {
