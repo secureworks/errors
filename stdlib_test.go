@@ -239,7 +239,7 @@ func TestJoin(t *testing.T) {
 	errs := []error{err1, err2, nil, err3}
 
 	merr := Join(errs...)
-	testutils.AssertEqual(t, "new err 1; new err 2; new err 3", merr.Error())
+	testutils.AssertEqual(t, "[new err 1; new err 2; new err 3]", merr.Error())
 	testutils.AssertEqual(t, []error{err1, err2, err3}, merr.(interface{ Unwrap() []error }).Unwrap())
 	testutils.AssertNil(t, Join(nil, nil, nil))
 }

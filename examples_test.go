@@ -676,8 +676,6 @@ func ExampleErrorsFrom() {
 		errors.New("err2"),
 		errors.New("err3"),
 	).ErrorOrNil()
-	err = fmt.Errorf("inner context: %w", err)
-	err = fmt.Errorf("outer context: %w", err)
 
 	fmt.Println(err) // Print the multierror for comparison.
 
@@ -686,7 +684,7 @@ func ExampleErrorsFrom() {
 		fmt.Println(err)
 	}
 
-	// Output: outer context: inner context: [err1; err2; err3]
+	// Output: [err1; err2; err3]
 	// err1
 	// err2
 	// err3

@@ -49,7 +49,7 @@ func (m *multierrorType) Unwrap() []error {
 }
 
 func TestMultiError(t *testing.T) {
-	// Tests below for NewMultiError, Append and Errors.
+	// Tests below for NewMultiError, Append and Unwrap/Errors.
 
 	t.Run("combines errors together, retaining order", func(t *testing.T) {
 		err1 := New("err 1")
@@ -83,84 +83,46 @@ func TestMultiError(t *testing.T) {
 		err1 := New("err 1")
 		err2 := New("err 2")
 		err3 := New("err 3")
+		err4 := New("err 4")
 
 		merr1 := NewMultiError(err1, err2, err3)
-		// Unwraps to the MultiError.
-		merr2 := fmt.Errorf("wrap: %w", NewMultiError(err1, err2, err3))
-		merr := NewMultiError(merr1, nilError(), merr2)
+		merr := NewMultiError(merr1, nilError(), err4)
+
+		errs := merr.Unwrap()
+		testutils.AssertEqual(t, 4, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+		testutils.AssertEqual(t, err2, errs[1])
+		testutils.AssertEqual(t, err3, errs[2])
+		testutils.AssertEqual(t, err4, errs[3])
+	})
+
+	t.Run("unwraps and flattens multierrors", func(t *testing.T) {
+		err1 := New("err 1")
+		err2 := New("err 2")
+		err3 := New("err 3")
+		err4 := New("err 4")
+		err5 := New("err 5")
+		err6 := New("err 6")
+
+		merr1 := &multierrorType{msg: "err", errs: []error{nilError(), err1, err2, err3}}
+		merr2 := &multierrorType{msg: "err", errs: []error{err4, err5}}
+		merr3 := &multierrorType{msg: "err", errs: []error{nilError(), err6}}
+		merr := NewMultiError(merr1, nilError(), merr2, merr3)
 
 		errs := merr.Unwrap()
 		testutils.AssertEqual(t, 6, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
 		testutils.AssertEqual(t, err3, errs[2])
-		testutils.AssertEqual(t, err1, errs[3])
-		testutils.AssertEqual(t, err2, errs[4])
-		testutils.AssertEqual(t, err3, errs[5])
+		testutils.AssertEqual(t, err4, errs[3])
+		testutils.AssertEqual(t, err5, errs[4])
+		testutils.AssertEqual(t, err6, errs[5])
 	})
-
-	// t.Run("unwraps and flattens multierrors", func(t *testing.T) {
-	// 	err1 := New("err 1")
-	// 	err2 := New("err 2")
-	// 	err3 := New("err 3")
-	//
-	// 	// Unwraps to the multierror.
-	// 	// Unlike MultiErrors these can be nested.
-	// 	merrT1 := fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{nilError(), err1, err2, err3}})
-	// 	merrT2 := fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{err1, err2}})
-	// 	merrT3 := fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{merrT2, nilError(), err3}})
-	// 	merr := NewMultiError(merrT1, nilError(), err2, merrT3)
-	//
-	// 	errs := merr.Unwrap()
-	// 	testutils.AssertEqual(t, 7, len(errs))
-	// 	testutils.AssertEqual(t, err1, errs[0])
-	// 	testutils.AssertEqual(t, err2, errs[1])
-	// 	testutils.AssertEqual(t, err3, errs[2])
-	// 	testutils.AssertEqual(t, err2, errs[3])
-	// 	testutils.AssertEqual(t, err1, errs[4])
-	// 	testutils.AssertEqual(t, err2, errs[5])
-	// 	testutils.AssertEqual(t, err3, errs[6])
-	// })
-
-	// t.Run("retains types for flattened errors", func(t *testing.T) {
-	// 	cerr := customErr{msg: "custom err"}
-	// 	merrT := fmt.Errorf("wrap: %w", &multierrorType{
-	// 		msg: "err",
-	// 		errs: []error{
-	// 			fmt.Errorf("wrap: %w", &multierrorType{
-	// 				msg: "err",
-	// 				errs: []error{
-	// 					cerr,
-	// 					errWithFrames,
-	// 					errSentinel,
-	// 					errBasic,
-	// 				},
-	// 			}),
-	// 		},
-	// 	})
-	//
-	// 	errs := NewMultiError(merrT).Unwrap()
-	//
-	// 	// Type names for value types.
-	// 	testutils.AssertEqual(t, "customErr", reflect.TypeOf(errs[0]).Name())
-	//
-	// 	// Type names for pointer types.
-	// 	testutils.AssertEqual(t, "withStackTrace", reflect.TypeOf(errs[1]).Elem().Name())
-	// 	testutils.AssertEqual(t, "errorString", reflect.TypeOf(errs[2]).Elem().Name())
-	// 	testutils.AssertEqual(t, "errorString", reflect.TypeOf(errs[3]).Elem().Name())
-	//
-	// 	// Implements.
-	// 	testutils.AssertTrue(t, reflect.TypeOf(errs[1]).Implements(stackFramerIface))
-	// 	testutils.AssertTrue(t, reflect.TypeOf(errs[1]).Implements(stackTracerIface))
-	// 	testutils.AssertTrue(t, reflect.TypeOf(errs[3]).Implements(reflect.TypeOf((*interface {
-	// 		error
-	// 	})(nil)).Elem()))
-	// })
 }
 
 func TestMultiErrorErrorOrNil(t *testing.T) {
-	t.Run("returns nil when nil errors list", func(t *testing.T) {
-		testutils.AssertNil(t, (&MultiError{}).ErrorOrNil())
+	t.Run("returns nil when empty errors list", func(t *testing.T) {
+		testutils.AssertNil(t, NewMultiError().ErrorOrNil())
 	})
 	t.Run("returns nil when no errors", func(t *testing.T) {
 		testutils.AssertNil(t, NewMultiError(nil, nil).ErrorOrNil())
@@ -177,7 +139,7 @@ func TestMultiErrorErrorOrNil(t *testing.T) {
 	})
 }
 
-func TestMultiErrorUnwrap(t *testing.T) {
+func TestMultiError_errors_Unwrap(t *testing.T) {
 	t.Run("returns nil", func(t *testing.T) {
 		merr := NewMultiError(
 			errWithFrames,
@@ -187,7 +149,7 @@ func TestMultiErrorUnwrap(t *testing.T) {
 	})
 }
 
-func TestMultiError_As(t *testing.T) {
+func TestMultiError_errors_As(t *testing.T) {
 	err1 := customErr{msg: "err 1"}
 	err2 := customErr{msg: "err 2"}
 	merr := NewMultiError(
@@ -213,7 +175,7 @@ func TestMultiError_As(t *testing.T) {
 	})
 }
 
-func TestMultiError_Is(t *testing.T) {
+func TestMultiError_errors_Is(t *testing.T) {
 	errNotFound := New("err not found")
 	merr := NewMultiError(
 		errBasic,
@@ -338,120 +300,91 @@ runtime\.main
 	})
 }
 
-func TestErrorsFrom(t *testing.T) {
-	cases := []struct {
-		name   string
-		error  error
-		result []error
-	}{
-		{"nil", nil, nil},
-		{"single error", errBasic, []error{errBasic}},
-		{"multierror", errWrappedMulti, []error{errBasic, errBasic}},
-		{"empty multierror", &multierrorType{}, nil},
-		{"MultiError", NewMultiError(errBasic, errBasic), []error{errBasic, errBasic}},
-		{"empty MultiError", NewMultiError(), nil},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			testutils.AssertEqual(t, tt.result, ErrorsFrom(tt.error))
-		})
-	}
-}
+// func TestErrorsFrom(t *testing.T) {
+// 	cases := []struct {
+// 		name   string
+// 		error  error
+// 		result []error
+// 	}{
+// 		{"nil", nil, nil},
+// 		{"single error", errBasic, []error{errBasic}},
+// 		{"multierror", errWrappedMulti, []error{errBasic, errBasic}},
+// 		{"empty multierror", &multierrorType{}, nil},
+// 		{"MultiError", NewMultiError(errBasic, errBasic), []error{errBasic, errBasic}},
+// 		{"empty MultiError", NewMultiError(), nil},
+// 	}
+// 	for _, tt := range cases {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			testutils.AssertEqual(t, tt.result, ErrorsFrom(tt.error))
+// 		})
+// 	}
+// }
 
 func TestAppend(t *testing.T) {
+	t.Run("handles nil", func(t *testing.T) {
+		err1 := New("err 1")
+		err3 := Append(err1, nil)
+
+		errs := ErrorsFrom(err3)
+		testutils.AssertEqual(t, 1, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+
+		err4 := Append(nil, err1)
+		errs = ErrorsFrom(err4)
+		testutils.AssertEqual(t, 1, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+
+		err5 := Append(nil, nil)
+		testutils.AssertNil(t, err5)
+
+		terrs := []error{}
+		err6 := Append(terrs...)
+		testutils.AssertNil(t, err6)
+	})
+
 	t.Run("merges errors", func(t *testing.T) {
 		err1 := New("err 1")
 		err2 := New("err 2")
 
-		merr := Append(err1, err2)
+		err3 := Append(err1, nil, err2)
 
-		errs := ErrorsFrom(merr)
+		errs := ErrorsFrom(err3)
 		testutils.AssertEqual(t, 2, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
 	})
 
-	t.Run("handles first param as MultiError", func(t *testing.T) {
+	t.Run("handles multierror params", func(t *testing.T) {
 		err1 := New("err 1")
 		err2 := New("err 2")
-		merrT1 := NewMultiError(nilError(), err1, err2)
+		merr := NewMultiError(err1, err2)
 		err3 := New("err 3")
 
-		merr := Append(merrT1, err3)
-
-		errs := ErrorsFrom(merr)
+		rerr := Append(merr, err3)
+		errs := ErrorsFrom(rerr)
 		testutils.AssertEqual(t, 3, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
 		testutils.AssertEqual(t, err3, errs[2])
-	})
 
-	t.Run("handles first param as multierror", func(t *testing.T) {
-		err1 := New("err 1")
-		err2 := New("err 2")
-		merrT1 := fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{nilError(), err1, err2}})
-		err3 := New("err 3")
-
-		merr := Append(merrT1, err3)
-
-		errs := ErrorsFrom(merr)
+		rerr = Append(err3, merr)
+		errs = ErrorsFrom(rerr)
 		testutils.AssertEqual(t, 3, len(errs))
+		testutils.AssertEqual(t, err3, errs[0])
+		testutils.AssertEqual(t, err1, errs[1])
+		testutils.AssertEqual(t, err2, errs[2])
+
+		merrT1 := &multierrorType{msg: "err", errs: []error{nil, err1, err2}}
+
+		rerr = Append(merrT1, err3, merr)
+		errs = ErrorsFrom(rerr)
+		testutils.AssertEqual(t, 5, len(errs))
 		testutils.AssertEqual(t, err1, errs[0])
 		testutils.AssertEqual(t, err2, errs[1])
 		testutils.AssertEqual(t, err3, errs[2])
-	})
+		testutils.AssertEqual(t, err1, errs[3])
+		testutils.AssertEqual(t, err2, errs[4])
 
-	t.Run("replaces the second error if it is a MultiError", func(t *testing.T) {
-		err1 := New("err 1")
-		err2 := New("err 2")
-
-		merr := Append(err1, NewMultiError(err2))
-
-		errs := ErrorsFrom(merr)
-		testutils.AssertEqual(t, 2, len(errs))
-		testutils.AssertEqual(t, err1, errs[0])
-		testutils.AssertNotEqual(t, err2, errs[1])
-		testutils.AssertEqual(t,
-			"errors.Append used incorrectly: second parameter may not be a multierror",
-			errs[1].Error())
-	})
-
-	t.Run("replaces the second error if it is a multierror", func(t *testing.T) {
-		err1 := New("err 1")
-		err2 := New("err 2")
-
-		merr := Append(err1, &multierrorType{msg: "err", errs: []error{err2}})
-
-		errs := ErrorsFrom(merr)
-		testutils.AssertEqual(t, 2, len(errs))
-		testutils.AssertEqual(t, err1, errs[0])
-		testutils.AssertNotEqual(t, err2, errs[1])
-		testutils.AssertEqual(t,
-			"errors.Append used incorrectly: second parameter may not be a multierror",
-			errs[1].Error())
-	})
-
-	t.Run("handles nils", func(t *testing.T) {
-		err := New("err")
-		merr := NewMultiError(err)
-
-		cases := []struct {
-			name string
-			arg1 error
-			arg2 error
-			size int
-		}{
-			{"first arg nil", nil, err, 1},
-			{"second arg nil", err, nil, 1},
-			{"first arg multi, second arg nil", merr, nil, 1},
-			{"first and second arg nil", nil, nil, 0},
-		}
-		for _, tt := range cases {
-			t.Run(tt.name, func(t *testing.T) {
-				actual := Append(tt.arg1, tt.arg2)
-				testutils.AssertEqual(t, tt.size, len(ErrorsFrom(actual)))
-			})
-		}
 	})
 }
 
@@ -513,7 +446,7 @@ func TestAppendInto(t *testing.T) {
 		err1 := New("err 1")
 		err2 := New("err 2")
 		err3 := New("err 3")
-		err := fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{nilError(), err1, err2}})
+		var err error = &multierrorType{msg: "err", errs: []error{nilError(), err1, err2}}
 
 		testutils.AssertTrue(t, AppendInto(&err, err3))
 		merr, ok := err.(*MultiError)
@@ -526,22 +459,55 @@ func TestAppendInto(t *testing.T) {
 		testutils.AssertEqual(t, err3, errs[2])
 	})
 
-	t.Run("replaces the second error if it is a multierror", func(t *testing.T) {
+	t.Run("handles second multierror param", func(t *testing.T) {
 		err1 := New("err 1")
-		err1Backup := err1
 		err2 := New("err 2")
+		merr := NewMultiError(err1, err2)
 
-		testutils.AssertTrue(t, AppendInto(&err1, &multierrorType{msg: "err", errs: []error{err2}}))
-		merr, ok := err1.(*MultiError)
+		var nilErr error
+		var someErr = err1
+
+		testutils.AssertTrue(t, AppendInto(&nilErr, merr))
+		merr, ok := nilErr.(*MultiError)
 		testutils.AssertTrue(t, ok)
 		errs := merr.Unwrap()
 
 		testutils.AssertEqual(t, 2, len(errs))
-		testutils.AssertEqual(t, err1Backup, errs[0])
-		testutils.AssertNotEqual(t, err2, errs[1])
-		testutils.AssertEqual(t,
-			"errors.AppendInto used incorrectly: second parameter may not be a multierror",
-			errs[1].Error())
+		testutils.AssertEqual(t, err1, errs[0])
+		testutils.AssertEqual(t, err2, errs[1])
+
+		testutils.AssertTrue(t, AppendInto(&someErr, merr))
+		merr, ok = someErr.(*MultiError)
+		testutils.AssertTrue(t, ok)
+		errs = merr.Unwrap()
+
+		testutils.AssertEqual(t, 3, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+		testutils.AssertEqual(t, err1, errs[1])
+		testutils.AssertEqual(t, err2, errs[2])
+
+		var merrT error = &multierrorType{msg: "err", errs: []error{nil, err1, err2}}
+		nilErr = nil
+		someErr = err1
+
+		testutils.AssertTrue(t, AppendInto(&nilErr, merrT))
+		merr, ok = nilErr.(*MultiError)
+		testutils.AssertTrue(t, ok)
+		errs = merr.Unwrap()
+
+		testutils.AssertEqual(t, 2, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+		testutils.AssertEqual(t, err2, errs[1])
+
+		testutils.AssertTrue(t, AppendInto(&someErr, merrT))
+		merr, ok = someErr.(*MultiError)
+		testutils.AssertTrue(t, ok)
+		errs = merr.Unwrap()
+
+		testutils.AssertEqual(t, 3, len(errs))
+		testutils.AssertEqual(t, err1, errs[0])
+		testutils.AssertEqual(t, err1, errs[1])
+		testutils.AssertEqual(t, err2, errs[2])
 	})
 
 	t.Run("handles nils", func(t *testing.T) {

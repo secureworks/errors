@@ -11,24 +11,39 @@ import (
 	"io"
 )
 
+// A simple interface for identifying an error wrapper for multiple
+// errors (including MultiError). This is the [standard interface] as
+// defined in Go.
+//
+// [standard interface]: https://pkg.go.dev/errors@go1.20#pkg-overview
+type multierror interface {
+	Unwrap() []error
+}
+
 // MultiError is a list of errors. For compatibility, this type also
-// implements the standard library error interfaces (including
-// Unwrap() []error, the unexported interfaces for As, and Is) and
-// includes helpers for managing groups of errors using Go patterns.
+// implements the standard library error interface we refer to in this
+// documentation as "multierror:"
 //
-// MultiErrors are guaranteed to be flat: no errors contained in its
-// list are (or wrap) a MultiError. The MultiError pattern is for
-// top-level collection of error groups only (a major difference with
-// the standard library implementation, which can effectively store
-// errors as a tree).
+//	type interface {
+//		Unwrap() []error
+//	}
 //
-// MultiErrors are not synchronized: you must handle them in a
-// concurrency safe way when accessing from multiple goroutines.
+// MultiError includes helpers for managing groups of errors using Go
+// patterns. They are not synchronized for concurrent use, but can be
+// used in concurrent code if the user manages synchronization.
+//
+// The MultiError pattern is for top-level collection of error groups
+// only, and are flattened when appended: no errors contained in its
+// list are a multierror. (This is the major difference with the
+// standard library implementation, which stores errors as a tree if
+// they are progressively built). This flattening is not recursive,
+// however: if a multierror is wrapped inside another error, it is not
+// flattened, since this could cause us to lose information or context.
 //
 // Unlike some error collection / multiple-error packages, we rely on an
-// exported MultiError type make it obvious how it should be handled in
-// the codebase. While it can be treated as an error when necessary, we
-// must be vigilant about nil-checking with MultiError:
+// exported MultiError type to make it obvious how it should be handled
+// in the codebase. While it can be treated as an error when necessary,
+// we must be vigilant about nil-checking with MultiError:
 //
 //	if merr := errors.NewMultiError(nil); merr != nil {
 //		// This will always be true!
@@ -46,27 +61,8 @@ import (
 //
 // For simple error-joining, use Append or AppendInto, which only speak
 // in the error interface.
-//
-// Any package function that expects a multiple error implementation
-// relies on the unexported interface:
-//
-//	type multierror interface {
-//		Unwrap() []error
-//	}
-//
-// This is for simplicity and interoperability: you can still extract
-// a multiple error from any error using NewMultiError.
 type MultiError struct {
 	errors []error
-}
-
-// A simple interface for identifying an error wrapper for multiple
-// errors (including MultiError). This is the [standard interface] as
-// defined in Go.
-//
-// [standard interface]: https://pkg.go.dev/errors@go1.20#pkg-overview
-type multierror interface {
-	Unwrap() []error
 }
 
 var _ interface { // Assert interface implementation.
@@ -79,24 +75,29 @@ var _ interface { // Assert interface implementation.
 // values are not included, so the size of the MultiError may be less
 // than the number of errors passed to the function.
 //
-// If any of the given errors is a MultiError, it is flattened into the
-// new MultiError.
-//
-// If any of the errors is not itself a MultiError, but wraps a
-// MultiError, then that MultiError is unwrapped and each of its errors
-// is flattened into the new MultiError. In this way we could lose
-// information about an error chain, so the simple rule is
-// ***do not wrap MultiErrors!***
+// If any of the given errors is a multierror, it is flattened into the
+// new MultiError, allowing "append-like" behavior.
 func NewMultiError(errs ...error) (merr *MultiError) {
 	merr = new(MultiError)
-	merr.Append(errs...)
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+		if mm, ok := err.(multierror); ok {
+			for _, err := range mm.Unwrap() {
+				if err == nil { // Sanity check: we don't know the implementation.
+					continue
+				}
+				merr.errors = append(merr.errors, err)
+			}
+			continue
+		}
+		merr.errors = append(merr.errors, err)
+	}
 	return
 }
 
 func (merr *MultiError) Error() string {
-	// TODO(PH): prealloc and possibly use strings.Builder; eg:
-	//     var buf strings.Builder
-	//     buf.Grow(merr.Len() * 128 + 2)
 	buf := new(bytes.Buffer)
 	formatMessages(buf, merr, [2]string{"[", "]"})
 	return buf.String()
@@ -115,9 +116,6 @@ func (merr *MultiError) Error() string {
 // Do not modify the returned errors and expect the MultiError to remain
 // stable.
 func (merr *MultiError) Unwrap() []error {
-	if len(merr.errors) == 0 {
-		return nil
-	}
 	return merr.errors
 }
 
@@ -130,10 +128,10 @@ func (merr *MultiError) Errors() []error {
 	return merr.Unwrap()
 }
 
-// ErrorOrNil is used to get a clean error interface for reflection. If
-// the MultiError is empty it returns nil, and if there is a single
-// error then it is unnested. Otherwise, it returns the MultiError
-// retyped for the error interface.
+// ErrorOrNil is used to get a clean error interface for reflection, nil
+// checking and other comparisons. If the MultiError is empty it returns
+// nil, and if there is a single error then it is unnested. Otherwise,
+// it returns a MultiError retyped for the error interface.
 //
 // Retrieving the MultiError is simple, since NewMultiError flattens
 // MultiErrors passed to it:
@@ -142,61 +140,13 @@ func (merr *MultiError) Errors() []error {
 //	newMErr := errors.NewMultiError(err)
 //	newMErr.Errors() // => []error{e1, e2, e3}
 func (merr *MultiError) ErrorOrNil() error {
-	if len(merr.Unwrap()) == 0 {
+	if len(merr.errors) == 0 {
 		return nil
 	}
-	if len(merr.Unwrap()) == 1 {
+	if len(merr.errors) == 1 {
 		return merr.errors[0]
 	}
 	return merr
-}
-
-// Append is a method for adding errors to a MultiError. It is
-// equivalent to using NewMultiError with the current errors and the new
-// errors, and provides a way to do Append while working with the
-// MultiError type directly.
-func (merr *MultiError) Append(errs ...error) {
-	for _, err := range errs {
-		if err == nil {
-			continue
-		}
-		if mm := unwrapMultiErr(err); mm != nil {
-			merr.errors = append(merr.errors, flatten(mm)...)
-		} else {
-			merr.errors = append(merr.errors, err)
-		}
-	}
-}
-
-// flatten gets a list of errors from a multierror that is certain not
-// to contain any other multierrors or wrapped multierrors.
-func flatten(m multierror) (errs []error) {
-	// We can skip a deep unwrap/flatten pass on a MultiError.
-	if merr, ok := m.(*MultiError); ok {
-		return merr.Unwrap()
-	}
-
-	for _, err := range m.Unwrap() {
-		if err == nil {
-			continue
-		}
-		if mm := unwrapMultiErr(err); mm != nil {
-			errs = append(errs, flatten(mm)...)
-		} else {
-			errs = append(errs, err)
-		}
-	}
-	return
-}
-
-// unwrapMultiErr finds the first multierror in the error chain. If none
-// is found it returns nil.
-func unwrapMultiErr(err error) multierror {
-	merr := new(multierror)
-	if As(err, merr) {
-		return *merr
-	}
-	return nil
 }
 
 func (merr *MultiError) Format(s fmt.State, verb rune) {
@@ -249,40 +199,23 @@ func formatMessages(w io.Writer, merr multierror, delimiters [2]string) {
 }
 
 // ErrorsFrom returns a list of errors that the supplied error is
-// composed of. multierrors are unwrapped, flattened, and returned. If
-// the error is nil, or is a multierror with no errors, a nil slice is
-// returned. It is useful when an API has forced a MultiError to be
-// returned as an error type, or when it is unknown if a given error is
-// a MultiError or not:
+// composed of. If the error is a multierror then Unwrap is called on
+// it. If the given error is nil, a nil slice is returned. If the error
+// is not composed of other errors, the returned slice contains just the
+// error that was passed in.
 //
-//	var err error
-//	// ...
-//	if errors.AppendInto(&err, w.Close()) {
-//		errs := errors.ErrorsFrom(err)
-//	}
+// ErrorsFrom is useful when it is unknown if a given error is a
+// multierror or not.
 //
-// If the error is not composed of other errors, the returned slice
-// contains just the error that was passed in.
-//
-// Callers of this function are free to modify the returned slice.
+// Callers of this function are free to modify the returned slice, but
+// modifications to the errors themselves may race.
 func ErrorsFrom(err error) []error {
 	if err == nil {
 		return nil
 	}
-	if merr, ok := err.(*MultiError); ok {
+	if merr, ok := err.(multierror); ok {
 		errs := merr.Unwrap()
-		if len(errs) == 0 {
-			return nil
-		}
-		result := make([]error, len(errs))
-		copy(result, errs)
-		return result
-	}
-	if mm := unwrapMultiErr(err); mm != nil {
-		errs := flatten(mm)
-		if len(errs) == 0 {
-			return nil
-		}
+
 		result := make([]error, len(errs))
 		copy(result, errs)
 		return result
@@ -309,14 +242,21 @@ func Append(errs ...error) error {
 	}
 
 	// Optimized cases: 1 or 2 errors.
-	if len(errs) == 1 {
-		return errs[0]
+	var singleErr error
+	switch {
+	case len(errs) == 1:
+		singleErr = errs[0]
+	case len(errs) == 2 && errs[0] == nil:
+		singleErr = errs[1]
+	case len(errs) == 2 && errs[1] == nil:
+		singleErr = errs[0]
 	}
-	if len(errs) == 2 && errs[0] == nil {
-		return errs[1]
-	}
-	if len(errs) == 2 && errs[1] == nil {
-		return errs[0]
+	if singleErr != nil {
+		// Ensure we flatten.
+		if mm, ok := singleErr.(multierror); ok {
+			return NewMultiError(mm.Unwrap()...).ErrorOrNil()
+		}
+		return singleErr
 	}
 
 	// Do the work.
