@@ -14,10 +14,8 @@ hand.
 Important among these primitives are stack traces, explicit error collection
 types (multierrors and error groups) and error context management.
 
-While Go 1.13 introduced error wrapping utilities that have fixed some
-immediate issues, and Go 1.20 added a (very) minimal recognition that we may
-want to collect errors into a multierror, it is really useful to have a few
-more tools on hand.
+While Go 1.13 introduced error wrapping utilities and Go 1.20 added a minimal
+multierror collection, it is really useful to have a few more tools on hand.
 
 ### Installation
 
@@ -64,8 +62,8 @@ Package `github.com/secureworks/errors`:
 - use in place of the standard library with no change in behavior;
 - use the `errors.MultiError` type as either an explicit multierror 
   implementation or as an implicit multierror passed around with the default 
-  `error` interface; use `errors.Append` and others to simplify multierror 
-  management in your code;
+  `error` interface; use `errors.Join`, `errors.Append` and others to simplify
+  multierror management in your code;
 - embed (singular) stack frames with `errors.NewWithFrame("...")`, 
   `errors.WithFrame(err)`, and `fmt.Errorf("...: %w", err)`;
 - embed stack traces with `errors.NewWithStackTrace("...")` and
@@ -87,8 +85,6 @@ Package `github.com/secureworks/errors/syncerr`:
 Possible improvements before reaching `v1.0` include:
 
 - **Add support for Windows filepaths in call frames.**
-- Add direct integrations with other errors packages (especially those listed 
-  in the codebase).
 - Include either a linter or a suggested [`golang-ci`][golang-ci] lint YAML 
   to support idiomatic use.
 
