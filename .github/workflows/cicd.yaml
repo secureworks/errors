@@ -1,13 +1,15 @@
 name: cicd
-
 on:
   pull_request:
   push:
     branches:
       - main
 
-jobs:
+permissions:
+  contents: read
+  checks: write
 
+jobs:
   build:
     name: test
     runs-on: ubuntu-latest
@@ -21,7 +23,6 @@ jobs:
         run: go build -v ./...
       - name: test
         run: go test -v ./...
-
   lint:
     name: lint
     runs-on: ubuntu-latest
@@ -35,4 +36,4 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.58
-          config:  .golangci.yaml
+          args: --config=.golangci.yaml

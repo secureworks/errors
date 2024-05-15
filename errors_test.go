@@ -162,10 +162,6 @@ func nilError() error {
 	return nil
 }
 
-type errorType struct{}
-
-func (e errorType) Error() string { return "i'm an error" }
-
 var (
 	stackFramerIface = reflect.TypeOf((*interface {
 		Frames() Frames

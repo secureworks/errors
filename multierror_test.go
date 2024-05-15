@@ -23,12 +23,6 @@ func init() {
 	errWithFrames = NewWithStackTrace("stack trace err")
 }
 
-type errorList []errorType
-
-func (m errorList) Error() string {
-	return fmt.Sprintf("i'm an error list x %d", len(m))
-}
-
 type multierrorType struct {
 	msg  string
 	errs []error
