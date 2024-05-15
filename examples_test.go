@@ -540,7 +540,7 @@ func ExampleMultiError_ErrorOrNil() {
 }
 
 func ExampleMultiError_as() {
-	err1 := fmt.Errorf("context: %w",
+	err1 := errors.Errorf("context: %w",
 		&unknownErrorType{error: errors.New("err"), SecretValue: "secret A"})
 
 	fmt.Println()
@@ -554,7 +554,7 @@ func ExampleMultiError_as() {
 
 	// MultiError implements As by iterating over each error in order,
 	// unwrapping the contained values.
-	err2 := fmt.Errorf("outer context: %w", errors.NewMultiError(
+	err2 := errors.Errorf("outer context: %w", errors.NewMultiError(
 		errors.New("err"),
 		err1,
 		// Last in order, so not reached.
@@ -588,15 +588,15 @@ func ExampleMultiError_as() {
 
 func ExampleMultiError_is() {
 	errSentinel := errors.New("sentinel err")
-	errA := fmt.Errorf("ctx A: %w", errSentinel)
-	errB := fmt.Errorf("ctx B: %w", errors.New("err"))
-	errC := fmt.Errorf("ctx C: %w", errSentinel)
+	errA := errors.Errorf("ctx A: %w", errSentinel)
+	errB := errors.Errorf("ctx B: %w", errors.New("err"))
+	errC := errors.Errorf("ctx C: %w", errSentinel)
 
 	fmt.Println()
 
 	// MultiError implements Is by iterating over each error in order,
 	// unwrapping the contained values.
-	err := fmt.Errorf("outer context: %w", errors.NewMultiError(
+	err := errors.Errorf("outer context: %w", errors.NewMultiError(
 		errA,
 		errB,
 		errC,
@@ -692,8 +692,8 @@ func ExampleErrorsFrom() {
 
 func ExampleErrorsFrom_singleError() {
 	err := errors.New("err")
-	err = fmt.Errorf("inner context: %w", err)
-	err = fmt.Errorf("outer context: %w", err)
+	err = errors.Errorf("inner context: %w", err)
+	err = errors.Errorf("outer context: %w", err)
 
 	errs := errors.ErrorsFrom(err)
 	for _, err := range errs { // errs contains the given error.
