@@ -108,7 +108,7 @@ var (
 	withFrameFuncM  = "^github\\.com/secureworks/errors.withFrameCaller$"
 	withStackFuncM  = "^github\\.com/secureworks/errors.withStackTraceCaller$"
 	withWrapFuncM   = "^github\\.com/secureworks/errors.wrapCaller$"
-	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\.glob\.\.func%s$`, errorsTestPkgM, fnName) }
+	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\..*\.func%s$`, errorsTestPkgM, fnName) }
 	errorTestFileM  = func(line string) string { return fmt.Sprintf("^\t.+%s:%s$", errorsTestFilM, line) }
 
 	framesChainM = []string{
@@ -161,10 +161,6 @@ var (
 func nilError() error {
 	return nil
 }
-
-type errorType struct{}
-
-func (e errorType) Error() string { return "i'm an error" }
 
 var (
 	stackFramerIface = reflect.TypeOf((*interface {
@@ -274,7 +270,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 0,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.1\.1$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.1\.1$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
@@ -290,7 +286,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 2,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.1$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.1$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
@@ -298,7 +294,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 3,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.2$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.2$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
@@ -482,6 +478,31 @@ func TestFramesFrom(t *testing.T) {
 			expected,
 		)
 	})
+
+	t.Run("when called on a multierror", func(t *testing.T) {
+		errChain := Errorf("wrap: %w: context: %w", framesChainError(), framesChainError())
+
+		// None on the multierror.
+		ff := FramesFrom(errChain)
+		testutils.AssertEqual(t, 0, len(ff))
+
+		// All on the wrapped errors.
+		for _, err := range ErrorsFrom(errChain) {
+			fff := FramesFrom(err)
+			testutils.AssertLinesMatch(t,
+				fff,
+				"%+v",
+				append(
+					framesChainM,
+					[]string{
+						// From the call to Errorf.
+						"^github.com/secureworks/errors\\.TestFramesFrom.func5$",
+						errorTestFileM(`\d+`),
+					}...,
+				),
+			)
+		}
+	})
 }
 
 func TestErrorFormat(t *testing.T) {
@@ -511,17 +532,18 @@ func TestErrorFormat(t *testing.T) {
 				},
 			},
 			{
-				// Test that subsequent withFrames do not print frames recursively.
+				// Test that subsequent withFrames do not print frames recursively, but
+				// serially!
 				format: "%+v",
 				error:  errChain,
 				expect: []string{
-					"err",
+					"wrap: wrap: err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`488`),
+					errorTestFileM(`509`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`489`),
+					errorTestFileM(`510`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`490`),
+					errorTestFileM(`511`),
 				},
 			},
 		}
@@ -563,7 +585,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`491`),
+					errorTestFileM(`512`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},

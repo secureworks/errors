@@ -32,13 +32,34 @@ func Errorf(format string, values ...interface{}) error {
 		return errors.New(`%!e(errors.Errorf=failed: ` + err.Error() + `)`)
 	}
 
-	// Interpose and wrap errors with framer if the associated verb is `%w`.
+	var numWrapped int
+	for _, v := range verbs {
+		if v.letter != 'w' {
+			continue
+		}
+		numWrapped++
+	}
+
+	// Allow no %w verbs, and when 0 or 1, then we wrap the created error
+	// with a frame. This allows the received error to handle %+v formatting
+	// correctly.
+	if numWrapped <= 1 {
+		return &withFrames{
+			error:  fmt.Errorf(format, values...),
+			frames: frames{getFrame(3)},
+		}
+	}
+
+	// Interpose and wrap errors with framer if the associated verb is `%w`,
+	// when there is more than one value, creating a multierror where each
+	// error has a reference to the frame.
 	for _, v := range verbs {
 		if v.letter != 'w' {
 			continue
 		}
 		if wrappedErr, ok := values[v.idx].(error); ok {
 			if wrappedErr != nil {
+				numWrapped++
 				values[v.idx] = &withFrames{
 					error:  wrappedErr,
 					frames: frames{getFrame(3)},
@@ -46,7 +67,6 @@ func Errorf(format string, values ...interface{}) error {
 			}
 		}
 	}
-
 	return fmt.Errorf(format, values...)
 }
 

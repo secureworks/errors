@@ -68,7 +68,7 @@ func TestErrorf_multiError(t *testing.T) {
 
 func Benchmark_parseVerb(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		parseVerb("%[3]*.[2]*[1]f")
+		parseVerb("%[3]*.[2]*[1]f") //nolint:errcheck
 	}
 }
 

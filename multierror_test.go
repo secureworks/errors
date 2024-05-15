@@ -12,21 +12,15 @@ import (
 var (
 	errBasic        = New("new err")
 	errSentinel     = New("sentinel err")
-	errWrapSentinel = fmt.Errorf("wrap: %w", errSentinel)
-	errMultiWrap    = fmt.Errorf("wrap 2: %w", fmt.Errorf("wrap 1: %w", New("err")))
-	errWrappedMulti = fmt.Errorf("wrap: %w", &multierrorType{msg: "err", errs: []error{errBasic, errBasic}})
+	errWrapSentinel = Errorf("wrap: %w", errSentinel)
+	errMultiWrap    = Errorf("wrap 2: %w", fmt.Errorf("wrap 1: %w", New("err")))
+	errWrappedMulti = Errorf("wrap: %w: %w", errBasic, errBasic)
 
 	errWithFrames error
 )
 
 func init() {
 	errWithFrames = NewWithStackTrace("stack trace err")
-}
-
-type errorList []errorType
-
-func (m errorList) Error() string {
-	return fmt.Sprintf("i'm an error list x %d", len(m))
 }
 
 type multierrorType struct {
@@ -268,6 +262,8 @@ runtime\.main
 	.+/runtime/proc\.go:\d+
 
 \* error 2 of 2: wrap 2: wrap 1: err
+github\.com/secureworks/errors\.init
+	.+/multierror_test.go:\d+
 `,
 			},
 		}
@@ -300,25 +296,32 @@ runtime\.main
 	})
 }
 
-// func TestErrorsFrom(t *testing.T) {
-// 	cases := []struct {
-// 		name   string
-// 		error  error
-// 		result []error
-// 	}{
-// 		{"nil", nil, nil},
-// 		{"single error", errBasic, []error{errBasic}},
-// 		{"multierror", errWrappedMulti, []error{errBasic, errBasic}},
-// 		{"empty multierror", &multierrorType{}, nil},
-// 		{"MultiError", NewMultiError(errBasic, errBasic), []error{errBasic, errBasic}},
-// 		{"empty MultiError", NewMultiError(), nil},
-// 	}
-// 	for _, tt := range cases {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			testutils.AssertEqual(t, tt.result, ErrorsFrom(tt.error))
-// 		})
-// 	}
-// }
+func TestErrorsFrom(t *testing.T) {
+	cases := []struct {
+		name   string
+		error  error
+		result []error
+	}{
+		{"nil", nil, nil},
+		{"single error", errBasic, []error{errBasic}},
+		{"multierror", &multierrorType{msg: "...", errs: []error{errBasic, errBasic}}, []error{errBasic, errBasic}},
+		{"empty multierror", &multierrorType{}, nil},
+		{"MultiError", NewMultiError(errBasic, errBasic), []error{errBasic, errBasic}},
+		{"empty MultiError", NewMultiError(), nil},
+		{"errors.Errorf multierror", errWrappedMulti, []error{errBasic, errBasic}},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if len(tt.result) == 0 {
+				testutils.AssertEqual(t, 0, len(ErrorsFrom(tt.error)))
+				return
+			}
+			for i, err := range ErrorsFrom(tt.error) {
+				testutils.AssertTrue(t, Is(err, tt.result[i])) // Could be wrapped, in the case of errors.Errorf.
+			}
+		})
+	}
+}
 
 func TestAppend(t *testing.T) {
 	t.Run("handles nil", func(t *testing.T) {

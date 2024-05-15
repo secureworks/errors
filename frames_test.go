@@ -277,7 +277,7 @@ func TestFramesFormat(t *testing.T) {
 			"default %n",
 			rtimeStack,
 			"%n",
-			`^\[stackCaller init doInit1 doInit main\]$`,
+			`^\[stackCaller init doInit.? doInit main\]$`,
 		},
 
 		{"empty %v", nil, "%v", `\[\]`},
@@ -302,7 +302,7 @@ github\.com/secureworks/errors.stackCaller
 	.+/frames_test.go:29
 github\.com/secureworks/errors.init
 	.+/frames_test.go:46
-runtime\.doInit1
+runtime\.doInit.?
 	.+/runtime/proc.go:\d+
 runtime\.doInit
 	.+/runtime/proc.go:\d+
