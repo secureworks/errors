@@ -108,7 +108,7 @@ var (
 	withFrameFuncM  = "^github\\.com/secureworks/errors.withFrameCaller$"
 	withStackFuncM  = "^github\\.com/secureworks/errors.withStackTraceCaller$"
 	withWrapFuncM   = "^github\\.com/secureworks/errors.wrapCaller$"
-	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\.glob\.\.func%s$`, errorsTestPkgM, fnName) }
+	errorTestAnonM  = func(fnName string) string { return fmt.Sprintf(`^%s\..*\.func%s$`, errorsTestPkgM, fnName) }
 	errorTestFileM  = func(line string) string { return fmt.Sprintf("^\t.+%s:%s$", errorsTestFilM, line) }
 
 	framesChainM = []string{
@@ -270,7 +270,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 0,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.1\.1$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.1\.1$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
@@ -286,7 +286,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 2,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.1$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.1$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
@@ -294,7 +294,7 @@ func TestErrorFrames(t *testing.T) {
 				skip: 3,
 				frameMatchers: []string{
 					"",
-					errorsTestPkgM + `\.TestErrorFrames\.func3\.2$`,
+					errorsTestPkgM + `\.TestErrorFrames.*\.func3\.2$`,
 					errorTestFileM(`\d+`), // Offsets based on the anon func above.
 				},
 			},
