@@ -482,6 +482,31 @@ func TestFramesFrom(t *testing.T) {
 			expected,
 		)
 	})
+
+	t.Run("when called on a multierror", func(t *testing.T) {
+		errChain := Errorf("wrap: %w: context: %w", framesChainError(), framesChainError())
+
+		// None on the multierror.
+		ff := FramesFrom(errChain)
+		testutils.AssertEqual(t, 0, len(ff))
+
+		// All on the wrapped errors.
+		for _, err := range ErrorsFrom(errChain) {
+			fff := FramesFrom(err)
+			testutils.AssertLinesMatch(t,
+				fff,
+				"%+v",
+				append(
+					framesChainM,
+					[]string{
+						// From the call to Errorf.
+						"^github.com/secureworks/errors\\.TestFramesFrom.func5$",
+						errorTestFileM(`\d+`),
+					}...,
+				),
+			)
+		}
+	})
 }
 
 func TestErrorFormat(t *testing.T) {
@@ -518,11 +543,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"wrap: wrap: err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`488`),
+					errorTestFileM(`513`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`489`),
+					errorTestFileM(`514`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`490`),
+					errorTestFileM(`515`),
 				},
 			},
 		}
@@ -564,7 +589,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`491`),
+					errorTestFileM(`516`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},

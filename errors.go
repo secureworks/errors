@@ -233,6 +233,9 @@ func (w *withFrames) Format(s fmt.State, verb rune) {
 // information possible without returning a confusing frame set.
 // Therefore, try not to mix the WithFrame and WithStackTrace patterns
 // in a single error chain.
+//
+// FramesFrom will not traverse a multierror, since there is no sensible
+// way to structure the returned frames.
 func FramesFrom(err error) (ff Frames) {
 	var traceFound bool
 	for err != nil {
