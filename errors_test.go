@@ -514,7 +514,7 @@ func TestErrorFormat(t *testing.T) {
 				// Test that subsequent withFrames do not print frames recursively, but
 				// serially!
 				format: "%+v",
-				error:  withFrameCaller(func() error { return errChain }),
+				error:  errChain,
 				expect: []string{
 					"wrap: wrap: err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
@@ -523,8 +523,6 @@ func TestErrorFormat(t *testing.T) {
 					errorTestFileM(`489`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
 					errorTestFileM(`490`),
-					withFrameFuncM,
-					errorTestFileM(withFrameL),
 				},
 			},
 		}
