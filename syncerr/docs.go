@@ -51,7 +51,7 @@
 //	// ...
 //	err := group.Wait()
 //	merr, _ := err.(*errors.MultiError)
-//	fmt.Println(merr.Errors())
+//	fmt.Println(merr.Unwrap())
 //
 // ParallelGroup includes the function WaitForMultiError that skips the
 // step of asserting the multierror interface on the result:
@@ -60,5 +60,5 @@
 //	group.Go(taskRunner, "task", "1")
 //	// ...
 //	merr := group.WaitForMultiError()
-//	fmt.Println(merr.Errors())
+//	fmt.Println(merr.Unwrap())
 package syncerr

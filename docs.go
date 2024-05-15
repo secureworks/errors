@@ -26,7 +26,7 @@
 //		return fmt.Errorf("contextual information: %w", err)
 //	}
 //
-// This helps us identify a root causs and place that cause in some
+// This helps us identify a root cause, and place that cause in some
 // program context recursively.
 //
 // However, we are not always in control of the full extent of our
@@ -45,17 +45,14 @@
 //
 // 2. to chain or group errors and extract their contextual information;
 //
-// 3. to format errors with all oftheir context when printing them; and
+// 3. to format errors with all of their context when printing them; and
 //
 // 4. to retain a simple API for most use cases while retaining the
 // ability to directly interact with, or tune, error chains and groups.
 //
 // # Error wrapping in Go 1.13
 //
-// This errors package is meant to be used in addition to the updates in
-// https://go.dev/blog/go1.13-errors. Therefore, you shouldn't include
-// it (and in fact it will cause your build to fail) if you are using Go
-// 1.12 or earlier.
+// This package is meant to be used with [error wrapping].
 //
 // Importantly: this package does not attempt to replace this system.
 // Instead, errors is meant to enrich it: all the types and interfaces
@@ -67,6 +64,11 @@
 //	import "github.com/secureworks/errors"
 //
 //	var Err = errors.New("example err") // Same as if we had used: import "errors"
+//
+// # Wrapping multiple errors in Go 1.20
+//
+// This package is meant to be used with the [multiple error wrapping]
+// support introduced in Go 1.20.
 //
 // # Stack traces or call frames
 //
@@ -174,7 +176,7 @@
 //	}
 //
 //	if merr := actionWrapper(); merr != nil {
-//		fmt.Printf("%+v\n", merr.Errors())
+//		fmt.Printf("%+v\n", merr.Unwrap())
 //	}
 //
 // # Retrieving error information
@@ -268,11 +270,11 @@
 // and can be formatted by the fmt package. The following verbs are
 // supported:
 //
-//	%s    print the error's message context. Frames are not included in
-//	      the message.
-//	%v    see %s
-//	%+v   extended format. Each Frame of the error's Frames will
-//	      be printed in detail.
+//	%s  print the error's message context. Frames are not included in
+//	    the message.
+//	%v  see %s
+//	%+v extended format. Each Frame of the error's Frames will
+//	    be printed in detail.
 //
 // This not an exhaustive list, see the tests for more.
 //
@@ -307,9 +309,12 @@
 //		PC() uintptr // Ie "programCounter," the interface for getting a frame's program counter.
 //
 //		// Used to identify an error that coalesces multiple errors:
-//		Errors() []error // Ie "multiError," the interface for getting multiple merged errors.
+//		Unwrap() []error // Ie "multierror," the interface for getting multiple merged errors.
 //	}
 //
 // Though none of these are exported by this package, they are
 // considered a part of its stable public interface.
+//
+// [error wrapping]: https://blog.golang.org/go1.13-errors
+// [multiple error wrapping]: https://tip.golang.org/doc/go1.20#errors
 package errors

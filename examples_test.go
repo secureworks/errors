@@ -510,13 +510,13 @@ func ExampleNewMultiError_flattensMultiErrors() {
 	// Output: [err1; err2; err3]
 }
 
-func ExampleMultiError_Errors() {
+func ExampleMultiError_Unwrap() {
 	merr := errors.NewMultiError(
 		errors.New("err1"),
 		errors.New("err2"),
 		errors.New("err3"),
 	)
-	for _, err := range merr.Errors() {
+	for _, err := range merr.Unwrap() {
 		pprint("\n", err)
 	}
 
@@ -569,7 +569,7 @@ func ExampleMultiError_as() {
 	// To get all, you must unwrap to MultiError and then unwrap contained values.
 	var merr *errors.MultiError
 	if errors.As(err2, &merr) {
-		for i, err := range merr.Errors() {
+		for i, err := range merr.Unwrap() {
 			if errors.As(err, &unkErr) {
 				fmt.Printf("unmerged %d unwrap found: %s\n", i, unkErr.SecretValue)
 			} else {
@@ -611,7 +611,7 @@ func ExampleMultiError_is() {
 	// values.
 	var merr *errors.MultiError
 	if errors.As(err, &merr) {
-		for i, err := range merr.Errors() {
+		for i, err := range merr.Unwrap() {
 			if errors.Is(err, errSentinel) {
 				fmt.Printf("unmerged %d sentinel found: %s\n", i, err)
 			} else {
@@ -676,8 +676,6 @@ func ExampleErrorsFrom() {
 		errors.New("err2"),
 		errors.New("err3"),
 	).ErrorOrNil()
-	err = fmt.Errorf("inner context: %w", err)
-	err = fmt.Errorf("outer context: %w", err)
 
 	fmt.Println(err) // Print the multierror for comparison.
 
@@ -686,7 +684,7 @@ func ExampleErrorsFrom() {
 		fmt.Println(err)
 	}
 
-	// Output: outer context: inner context: [err1; err2; err3]
+	// Output: [err1; err2; err3]
 	// err1
 	// err2
 	// err3

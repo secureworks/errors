@@ -34,7 +34,7 @@ func Example_parallelGroup() {
 	fmt.Println()
 	fmt.Println()
 
-	for _, err := range merr.Errors() {
+	for _, err := range merr.Unwrap() {
 		fmt.Println(err)
 	}
 
