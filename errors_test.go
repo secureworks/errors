@@ -539,11 +539,11 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"wrap: wrap: err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`513`),
+					errorTestFileM(`509`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`514`),
+					errorTestFileM(`510`),
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`515`),
+					errorTestFileM(`511`),
 				},
 			},
 		}
@@ -585,7 +585,7 @@ func TestErrorFormat(t *testing.T) {
 				expect: []string{
 					"err",
 					"^github.com/secureworks/errors.TestErrorFormat$",
-					errorTestFileM(`516`),
+					errorTestFileM(`512`),
 					`^testing\.tRunner$`,
 					`^.+/testing/testing.go:\d+$`,
 				},
